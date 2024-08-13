@@ -1,7 +1,7 @@
 plugin "file-name-is-resource-name" {
   enabled = true
   source  = "github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name"
-  version = "0.0.2"
+  version = "0.1.1"
 
   signing_key = <<-KEY
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -47,10 +47,9 @@ fvPvZSGI77zh+MSQwb0U7ksDXFLjnODtR8gt9vQHqFFDZKNp9kT54E5q0gpB3PIY
 KEY
 }
 
-rule {
+rule "file_name_is_resource_name" {
   enabled = true
-  name    = "file-name-is-resource-name"
-  config  = {
+
     variable_file_name_pattern = "^variables.tf$"
     locals_file_name_pattern = "^locals.tf$"
     provider_file_name_pattern = "^providers.tf$"
@@ -58,4 +57,3 @@ rule {
     module_file_name_pattern = "^module.tf$"
     data_file_name_pattern = "^data_.*.tf$"
   }
-}

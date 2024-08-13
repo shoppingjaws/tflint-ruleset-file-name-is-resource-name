@@ -17,7 +17,7 @@ type FileNameIsResourceNameRuleConfig struct {
 	provider_file_name_pattern string `hclext:"provider_file_name_pattern"`
 	output_file_name_pattern   string `hclext:"output_file_name_pattern"`
 	module_file_name_pattern   string `hclext:"module_file_name_pattern"`
-	data_file_name_pattern     string `hclext:"data_file_prefix_pattern"`
+	data_file_name_pattern     string `hclext:"data_file_name_pattern"`
 }
 
 // NewFileNameIsResourceNameRule returns a new rule
@@ -32,7 +32,7 @@ func (r *FileNameIsResourceNameRule) Name() string {
 
 // Enabled returns whether the rule is enabled by default
 func (r *FileNameIsResourceNameRule) Enabled() bool {
-	return false
+	return true
 }
 
 // Severity returns the rule severity
