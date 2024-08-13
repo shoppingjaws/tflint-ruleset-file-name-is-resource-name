@@ -15,10 +15,19 @@ func Test_FileNameIsResourceName(t *testing.T) {
 		Expected helper.Issues
 	}{
 		{
-			FileName: "resource.tf",
-			Name:     "Fail if file name is not resource type",
+			FileName: "aws_instance.tf",
+			Name:     "accept if file name is resource type",
 			Content: `
 resource "aws_instance" "web" {
+		instance_type = "t2.micro"
+}`,
+			Expected: helper.Issues{},
+		},
+		{
+			FileName: "data_aws_instance.tf",
+			Name:     "accept if file name is data type",
+			Content: `
+data "aws_instance" "web" {
 		instance_type = "t2.micro"
 }`,
 			Expected: helper.Issues{},
@@ -36,7 +45,7 @@ resource "aws_instance" "db" {
 `,
 			Expected: helper.Issues{{
 				Rule:    NewFileNameIsResourceNameRule(),
-				Message: "Do not declare anything other than variable block in ^variable.tf$",
+				Message: "Do not declare anything other than Variable block in variable.tf",
 				Range:   hcl.Range{Filename: "variable.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 30}},
 			}},
 		},

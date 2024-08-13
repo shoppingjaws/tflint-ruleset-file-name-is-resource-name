@@ -23,6 +23,10 @@ func Test_GetBlocksFromBody(t *testing.T) {
 			t.Fatal(diags)
 		}
 		result, _ := GetBlocksFromBody(file.Body)
+		assert.Equal(t, "resource_type", *result.Filter(Resource)[0].Type)
+		assert.Equal(t, "resource_name", *result.Filter(Resource)[0].Name)
+		assert.Equal(t, "data_type", *result.Filter(Data)[0].Type)
+		assert.Equal(t, "output_name", *result.Filter(Output)[0].Name)
 		assert.Equal(t, 1, len(result.Filter(Resource)))
 		assert.Equal(t, 1, len(result.Filter(Data)))
 		assert.Equal(t, 1, len(result.Filter(Variable)))

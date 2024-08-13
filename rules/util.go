@@ -93,9 +93,16 @@ func GetBlocksFromBody(body hcl.Body) (*BlockList, error) {
 	var blockList BlockList
 	for _, block := range content.Blocks {
 		blockList = append(blockList, Block{
-			Kind:  BlockKindEnum(toBlockKindEnum(block.Type)),
-			Name:  safeAccess(block.Labels, 0),
-			Type:  safeAccess(block.Labels, 1),
+			Kind: BlockKindEnum(toBlockKindEnum(block.Type)),
+			/*
+			 * HCLのパース結果とLabelNamesは逆順になっているため、後ろからアクセスする
+			 * resource "resource_type" "resource_name" {}
+			 *           [0]            [1]
+			 * output   "output_name" {}
+			 *           [0]
+			 */
+			Name:  safeAccess(block.Labels, -1),
+			Type:  safeAccess(block.Labels, -2),
 			Range: block.DefRange,
 		})
 	}
@@ -105,6 +112,8 @@ func GetBlocksFromBody(body hcl.Body) (*BlockList, error) {
 func safeAccess[T any](arr []T, index int) *T {
 	if index >= 0 && index < len(arr) {
 		return &arr[index]
+	} else if index < 0 && -index <= len(arr) {
+		return &arr[len(arr)+index]
 	}
 	return nil
 }
