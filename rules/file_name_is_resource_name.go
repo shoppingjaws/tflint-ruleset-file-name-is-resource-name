@@ -59,71 +59,71 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		logger.Error("Error decoding rule config: %s", err)
 		return err
 	}
-	var variablePattern string
-	if config.variable_file_name_pattern == "" {
-		variablePattern = `^variable.tf$`
-	} else {
-		variablePattern = config.variable_file_name_pattern
-	}
-	variableRe, err := regexp.Compile(variablePattern)
+	// var variablePattern string
+	// if config.variable_file_name_pattern == "" {
+	// 	variablePattern = `^variable.tf$`
+	// } else {
+	// 	variablePattern = config.variable_file_name_pattern
+	// }
+	variableRe, err := regexp.Compile(`^variable.tf$`)
 	if err != nil {
 		return err
 	}
 
-	var localsPattern string
-	if config.locals_file_name_pattern == "" {
-		localsPattern = `^locals.tf$`
-	} else {
-		localsPattern = config.locals_file_name_pattern
-	}
-	localsRe, err := regexp.Compile(localsPattern)
-	if err != nil {
-		return err
-	}
+	// var localsPattern string
+	// if config.locals_file_name_pattern == "" {
+	// 	localsPattern = `^locals.tf$`
+	// } else {
+	// 	localsPattern = config.locals_file_name_pattern
+	// }
+	// localsRe, err := regexp.Compile(localsPattern)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var providerPattern string
-	if config.provider_file_name_pattern == "" {
-		providerPattern = `^provider.tf$`
-	} else {
-		providerPattern = config.provider_file_name_pattern
-	}
-	providerRe, err := regexp.Compile(providerPattern)
-	if err != nil {
-		return err
-	}
+	// var providerPattern string
+	// if config.provider_file_name_pattern == "" {
+	// 	providerPattern = `^provider.tf$`
+	// } else {
+	// 	providerPattern = config.provider_file_name_pattern
+	// }
+	// providerRe, err := regexp.Compile(providerPattern)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var outputPattern string
-	if config.output_file_name_pattern == "" {
-		outputPattern = `^output.tf$`
-	} else {
-		outputPattern = config.output_file_name_pattern
-	}
-	outputRe, err := regexp.Compile(outputPattern)
-	if err != nil {
-		return err
-	}
+	// var outputPattern string
+	// if config.output_file_name_pattern == "" {
+	// 	outputPattern = `^output.tf$`
+	// } else {
+	// 	outputPattern = config.output_file_name_pattern
+	// }
+	// outputRe, err := regexp.Compile(outputPattern)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var modulePattern string
-	if config.module_file_name_pattern == "" {
-		modulePattern = `^module.tf$`
-	} else {
-		modulePattern = config.module_file_name_pattern
-	}
-	moduleRe, err := regexp.Compile(modulePattern)
-	if err != nil {
-		return err
-	}
+	// var modulePattern string
+	// if config.module_file_name_pattern == "" {
+	// 	modulePattern = `^module.tf$`
+	// } else {
+	// 	modulePattern = config.module_file_name_pattern
+	// }
+	// moduleRe, err := regexp.Compile(modulePattern)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var dataPattern string
-	if config.data_file_name_pattern == "" {
-		dataPattern = `^data_.*.tf$`
-	} else {
-		dataPattern = config.data_file_name_pattern
-	}
-	dataRe, err := regexp.Compile(dataPattern)
-	if err != nil {
-		return err
-	}
+	// var dataPattern string
+	// if config.data_file_name_pattern == "" {
+	// 	dataPattern = `^data_.*.tf$`
+	// } else {
+	// 	dataPattern = config.data_file_name_pattern
+	// }
+	// dataRe, err := regexp.Compile(dataPattern)
+	// if err != nil {
+	// 	return err
+	// }
 	for filename, file := range files {
 		logger.Debug("File: %s", filename)
 		blocks, err := GetBlocksFromBody(file.Body)
@@ -139,45 +139,45 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 			}
 		} else
 		// locals.tf
-		if localsRe.MatchString(filename) {
-			logger.Debug("locals")
-			if len(*blocks) != len(blocks.Filter(Locals)) {
-				return runner.EmitIssue(r, `Do not declare anything other than Locals block in `+filename, blocks.Exclude(Locals)[0].Range)
-			}
-		} else
-		// provider.tf
-		if providerRe.MatchString(filename) {
-			logger.Debug("provider")
-			if len(*blocks) != len(blocks.Filter(Provider)) {
-				return runner.EmitIssue(r, `Do not declare anything other than Provider block in `+filename, blocks.Exclude(Provider)[0].Range)
-			}
-		} else
-		// output.tf
-		if outputRe.MatchString(filename) {
-			logger.Debug("output")
-			if len(*blocks) != len(blocks.Filter(Output)) {
-				return runner.EmitIssue(r, `Do not declare anything other than Output block in `+filename, blocks.Exclude(Output)[0].Range)
-			}
-		} else
-		// module.tf
-		if moduleRe.MatchString(filename) {
-			logger.Debug("module")
-			if len(*blocks) != len(blocks.Filter(Module)) {
-				return runner.EmitIssue(r, `Do not declare anything other than Module block in `+filename, blocks.Exclude(Module)[0].Range)
-			}
-		} else
-		// data
-		if dataRe.MatchString(filename) {
-			logger.Debug("data")
-			if len(*blocks) != len(blocks.Filter(Data)) {
-				return runner.EmitIssue(r, `Do not declare anything other than Data block in `+filename, blocks.Exclude(Data)[0].Range)
-			}
-			for _, data := range blocks.Filter(Data) {
-				if "data_"+*data.Type+".tf" != filename {
-					return runner.EmitIssue(r, `File name should be the same as the data type `+"data_"+*data.Type+".tf", data.Range)
-				}
-			}
-		} else
+		// if localsRe.MatchString(filename) {
+		// 	logger.Debug("locals")
+		// 	if len(*blocks) != len(blocks.Filter(Locals)) {
+		// 		return runner.EmitIssue(r, `Do not declare anything other than Locals block in `+filename, blocks.Exclude(Locals)[0].Range)
+		// 	}
+		// } else
+		// // provider.tf
+		// if providerRe.MatchString(filename) {
+		// 	logger.Debug("provider")
+		// 	if len(*blocks) != len(blocks.Filter(Provider)) {
+		// 		return runner.EmitIssue(r, `Do not declare anything other than Provider block in `+filename, blocks.Exclude(Provider)[0].Range)
+		// 	}
+		// } else
+		// // output.tf
+		// if outputRe.MatchString(filename) {
+		// 	logger.Debug("output")
+		// 	if len(*blocks) != len(blocks.Filter(Output)) {
+		// 		return runner.EmitIssue(r, `Do not declare anything other than Output block in `+filename, blocks.Exclude(Output)[0].Range)
+		// 	}
+		// } else
+		// // module.tf
+		// if moduleRe.MatchString(filename) {
+		// 	logger.Debug("module")
+		// 	if len(*blocks) != len(blocks.Filter(Module)) {
+		// 		return runner.EmitIssue(r, `Do not declare anything other than Module block in `+filename, blocks.Exclude(Module)[0].Range)
+		// 	}
+		// } else
+		// // data
+		// if dataRe.MatchString(filename) {
+		// 	logger.Debug("data")
+		// 	if len(*blocks) != len(blocks.Filter(Data)) {
+		// 		return runner.EmitIssue(r, `Do not declare anything other than Data block in `+filename, blocks.Exclude(Data)[0].Range)
+		// 	}
+		// 	for _, data := range blocks.Filter(Data) {
+		// 		if "data_"+*data.Type+".tf" != filename {
+		// 			return runner.EmitIssue(r, `File name should be the same as the data type `+"data_"+*data.Type+".tf", data.Range)
+		// 		}
+		// 	}
+		// } else
 		// resource
 		{
 			logger.Debug("else")
