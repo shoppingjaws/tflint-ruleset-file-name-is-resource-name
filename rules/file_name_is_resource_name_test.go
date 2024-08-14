@@ -34,6 +34,13 @@ data "aws_instance" "web" {
 		},
 		{
 			FileName: "variable.tf",
+			Name:     "accept if file name is data type",
+			Content: `
+variable "variable_name" {}`,
+			Expected: helper.Issues{},
+		},
+		{
+			FileName: "variable.tf",
 			Name:     "decline the declaration of non variable block with variable.tf",
 			Content: `
 resource "aws_instance" "web" {

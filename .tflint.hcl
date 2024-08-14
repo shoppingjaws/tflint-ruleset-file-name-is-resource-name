@@ -49,11 +49,10 @@ KEY
 
 rule "file_name_is_resource_name" {
   enabled = true
-
-    variable_file_name_pattern = "^variables.tf$"
-    locals_file_name_pattern = "^locals.tf$"
-    provider_file_name_pattern = "^providers.tf$"
-    output_file_name_pattern = "^outputs.tf$"
-    module_file_name_pattern = "^module.tf$"
-    data_file_name_pattern = "^data_.*.tf$"
-  }
+  variable_file_name_pattern = "^variables.tf$"
+  locals_file_name_pattern = "^locals.tf$"
+  provider_file_name_pattern = "^providers.tf$"
+  output_file_name_pattern = "^outputs.tf$"
+  module_file_name_pattern = "^module.tf$"
+  data_file_name_pattern = "^data_.*.tf$"
+}

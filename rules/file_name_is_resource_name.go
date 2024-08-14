@@ -3,6 +3,7 @@ package rules
 import (
 	"regexp"
 
+	"github.com/terraform-linters/tflint-plugin-sdk/logger"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
 
@@ -47,6 +48,7 @@ func (r *FileNameIsResourceNameRule) Link() string {
 
 // Check checks whether ...
 func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
+	logger.Debug("Check init")
 	files, err := runner.GetFiles()
 	if err != nil {
 		return err
