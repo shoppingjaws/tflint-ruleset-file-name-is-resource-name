@@ -13,12 +13,12 @@ type FileNameIsResourceNameRule struct {
 }
 
 type FileNameIsResourceNameRuleConfig struct {
-	variable_file_name_pattern string `hclext:"variable_file_name_pattern"`
-	locals_file_name_pattern   string `hclext:"locals_file_name_pattern"`
-	provider_file_name_pattern string `hclext:"provider_file_name_pattern"`
-	output_file_name_pattern   string `hclext:"output_file_name_pattern"`
-	module_file_name_pattern   string `hclext:"module_file_name_pattern"`
-	data_file_name_pattern     string `hclext:"data_file_name_pattern"`
+	variable_file_name_pattern string `hclext:"variable_file_name_pattern,optional"`
+	locals_file_name_pattern   string `hclext:"locals_file_name_pattern,optional"`
+	provider_file_name_pattern string `hclext:"provider_file_name_pattern,optional"`
+	output_file_name_pattern   string `hclext:"output_file_name_pattern,optional"`
+	module_file_name_pattern   string `hclext:"module_file_name_pattern,optional"`
+	data_file_name_pattern     string `hclext:"data_file_name_pattern,optional"`
 }
 
 // NewFileNameIsResourceNameRule returns a new rule
@@ -55,6 +55,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 	}
 	config := &FileNameIsResourceNameRuleConfig{}
 	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
+		logger.Error("Error decoding rule config: %s", err)
 		return err
 	}
 	var variablePattern string
