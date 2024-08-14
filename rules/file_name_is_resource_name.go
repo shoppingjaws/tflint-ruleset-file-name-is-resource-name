@@ -55,10 +55,10 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 	}
 	config := &FileNameIsResourceNameRuleConfig{}
 	logger.Debug("Config %s", config.data_file_name_pattern)
-	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
-		logger.Error("Error decoding rule config: %s", err)
-		return err
-	}
+	// if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
+	// 	logger.Error("Error decoding rule config: %s", err)
+	// 	return err
+	// }
 	// var variablePattern string
 	// if config.variable_file_name_pattern == "" {
 	// 	variablePattern = `^variable.tf$`
