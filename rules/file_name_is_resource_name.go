@@ -13,12 +13,12 @@ type FileNameIsResourceNameRule struct {
 }
 
 type FileNameIsResourceNameRuleConfig struct {
-	variable_file_name_pattern string `hclext:"variable_file_name_pattern,optional"`
-	locals_file_name_pattern   string `hclext:"locals_file_name_pattern,optional"`
-	provider_file_name_pattern string `hclext:"provider_file_name_pattern,optional"`
-	output_file_name_pattern   string `hclext:"output_file_name_pattern,optional"`
-	module_file_name_pattern   string `hclext:"module_file_name_pattern,optional"`
-	data_file_name_pattern     string `hclext:"data_file_name_pattern,optional"`
+	VariableFileNamePattern string `hclext:"variable_file_name_pattern"`
+	// locals_file_name_pattern   string `hclext:"locals_file_name_pattern,optional"`
+	// provider_file_name_pattern string `hclext:"provider_file_name_pattern,optional"`
+	// output_file_name_pattern   string `hclext:"output_file_name_pattern,optional"`
+	// module_file_name_pattern   string `hclext:"module_file_name_pattern,optional"`
+	// data_file_name_pattern     string `hclext:"data_file_name_pattern,optional"`
 }
 
 // NewFileNameIsResourceNameRule returns a new rule
@@ -54,18 +54,15 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		return err
 	}
 	config := &FileNameIsResourceNameRuleConfig{}
-	logger.Debug("Config %s", config.data_file_name_pattern)
-	// if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
-	// 	logger.Error("Error decoding rule config: %s", err)
-	// 	return err
-	// }
-	// var variablePattern string
-	// if config.variable_file_name_pattern == "" {
-	// 	variablePattern = `^variable.tf$`
-	// } else {
-	// 	variablePattern = config.variable_file_name_pattern
-	// }
-	variableRe, err := regexp.Compile(`^variable.tf$`)
+	logger.Debug("Config %s", config.VariableFileNamePattern)
+	if config.VariableFileNamePattern == "" {
+		config.VariableFileNamePattern = `^variables.tf$`
+	}
+	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
+		logger.Error("Error decoding rule config: %s", err)
+		return err
+	}
+	variableRe, err := regexp.Compile(config.VariableFileNamePattern)
 	if err != nil {
 		return err
 	}

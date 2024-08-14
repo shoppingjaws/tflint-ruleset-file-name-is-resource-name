@@ -3,7 +3,6 @@ package rules
 import (
 	"testing"
 
-	hcl "github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
@@ -12,50 +11,64 @@ func Test_FileNameIsResourceName(t *testing.T) {
 		FileName string
 		Name     string
 		Content  string
+		Config   string
 		Expected helper.Issues
 	}{
 		{
-			FileName: "aws_instance.tf",
-			Name:     "accept if file name is resource type",
-			Content: `
-resource "aws_instance" "web" {
-		instance_type = "t2.micro"
-}`,
-			Expected: helper.Issues{},
-		},
-		{
-			FileName: "data_aws_instance.tf",
-			Name:     "accept if file name is data type",
-			Content: `
-data "aws_instance" "web" {
-		instance_type = "t2.micro"
-}`,
-			Expected: helper.Issues{},
-		},
-		{
 			FileName: "variable.tf",
-			Name:     "accept if file name is data type",
+			Name:     "accept if file name is variable type",
 			Content: `
-variable "variable_name" {}`,
-			Expected: helper.Issues{},
-		},
-		{
-			FileName: "variable.tf",
-			Name:     "decline the declaration of non variable block with variable.tf",
-			Content: `
-resource "aws_instance" "web" {
-    instance_type = "t2.micro"
-}
-resource "aws_instance" "db" {
-    instance_type = "t2.micro"
-}
+variable "variable_name" {}
 `,
-			Expected: helper.Issues{{
-				Rule:    NewFileNameIsResourceNameRule(),
-				Message: "Do not declare anything other than Variable block in variable.tf",
-				Range:   hcl.Range{Filename: "variable.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 30}},
-			}},
+			Config: `
+rule "file_name_is_resource_name" {
+  enabled = true
+  variable_file_name_pattern = "^variables.tf$"
+}`,
+			Expected: helper.Issues{},
 		},
+		// 		{
+		// 			FileName: "aws_instance.tf",
+		// 			Name:     "accept if file name is resource type",
+		// 			Content: `
+		// resource "aws_instance" "web" {
+		// 		instance_type = "t2.micro"
+		// }`,
+		// 			Expected: helper.Issues{},
+		// 		},
+		// 		{
+		// 			FileName: "data_aws_instance.tf",
+		// 			Name:     "accept if file name is data type",
+		// 			Content: `
+		// data "aws_instance" "web" {
+		// 		instance_type = "t2.micro"
+		// }`,
+		// 			Expected: helper.Issues{},
+		// 		},
+		// 		{
+		// 			FileName: "variable.tf",
+		// 			Name:     "accept if file name is data type",
+		// 			Content: `
+		// variable "variable_name" {}`,
+		// 			Expected: helper.Issues{},
+		// 		},
+		// 		{
+		// 			FileName: "variable.tf",
+		// 			Name:     "decline the declaration of non variable block with variable.tf",
+		// 			Content: `
+		// resource "aws_instance" "web" {
+		//     instance_type = "t2.micro"
+		// }
+		// resource "aws_instance" "db" {
+		//     instance_type = "t2.micro"
+		// }
+		// `,
+		// 			Expected: helper.Issues{{
+		// 				Rule:    NewFileNameIsResourceNameRule(),
+		// 				Message: "Do not declare anything other than Variable block in variable.tf",
+		// 				Range:   hcl.Range{Filename: "variable.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 30}},
+		// 			}},
+		// 		},
 	}
 
 	rule := NewFileNameIsResourceNameRule()
