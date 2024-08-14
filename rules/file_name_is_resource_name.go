@@ -123,12 +123,14 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		return err
 	}
 	for filename, file := range files {
+		logger.Debug("File: %s", filename)
 		blocks, err := GetBlocksFromBody(file.Body)
 		if err != nil {
 			return err
 		}
 		// variable.tf
 		if variableRe.MatchString(filename) {
+			logger.Debug("variable")
 			// check if there is any block other than variable
 			if len(*blocks) != len(blocks.Filter(Variable)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Variable block in `+filename, blocks.Exclude(Variable)[0].Range)
@@ -136,30 +138,35 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		} else
 		// locals.tf
 		if localsRe.MatchString(filename) {
+			logger.Debug("locals")
 			if len(*blocks) != len(blocks.Filter(Locals)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Locals block in `+filename, blocks.Exclude(Locals)[0].Range)
 			}
 		} else
 		// provider.tf
 		if providerRe.MatchString(filename) {
+			logger.Debug("provider")
 			if len(*blocks) != len(blocks.Filter(Provider)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Provider block in `+filename, blocks.Exclude(Provider)[0].Range)
 			}
 		} else
 		// output.tf
 		if outputRe.MatchString(filename) {
+			logger.Debug("output")
 			if len(*blocks) != len(blocks.Filter(Output)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Output block in `+filename, blocks.Exclude(Output)[0].Range)
 			}
 		} else
 		// module.tf
 		if moduleRe.MatchString(filename) {
+			logger.Debug("module")
 			if len(*blocks) != len(blocks.Filter(Module)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Module block in `+filename, blocks.Exclude(Module)[0].Range)
 			}
 		} else
 		// data
 		if dataRe.MatchString(filename) {
+			logger.Debug("data")
 			if len(*blocks) != len(blocks.Filter(Data)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Data block in `+filename, blocks.Exclude(Data)[0].Range)
 			}
@@ -171,6 +178,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		} else
 		// resource
 		{
+			logger.Debug("else")
 			// check if there is any block other than resource
 			if len(*blocks) != len(blocks.Filter(Resource)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Resource block in `+filename, blocks.Exclude(Data)[0].Range)
