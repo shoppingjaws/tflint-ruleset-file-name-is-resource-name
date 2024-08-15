@@ -35,4 +35,4 @@ rule "file_name_is_resource_name" {
 
 |Name|Description|Severity|Enabled|Link|
 | --- | --- | --- | --- | --- |
-| file_name_is_resource_name | Rule for file name follows resource name |✔| [link](./docs/file_name_is_resource_name.md)|
+| file_name_is_resource_name | Rule for file name follows resource name |ERROR|✔| [link](./docs/file_name_is_resource_name.md)|
