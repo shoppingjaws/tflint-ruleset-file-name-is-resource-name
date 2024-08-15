@@ -15,9 +15,9 @@ type FileNameIsResourceNameRule struct {
 type FileNameIsResourceNameRuleConfig struct {
 	VariableFileNamePattern string `hclext:"variable_file_name_pattern,optional"`
 	LocalsFileNamePattern   string `hclext:"locals_file_name_pattern,optional"`
-	// provider_file_name_pattern string `hclext:"provider_file_name_pattern,optional"`
-	// output_file_name_pattern   string `hclext:"output_file_name_pattern,optional"`
-	// module_file_name_pattern   string `hclext:"module_file_name_pattern,optional"`
+	ProviderFileNamePattern string `hclext:"provider_file_name_pattern,optional"`
+	OutputFileNamePattern   string `hclext:"output_file_name_pattern,optional"`
+	ModuleFileNamePattern   string `hclext:"module_file_name_pattern,optional"`
 	// data_file_name_pattern     string `hclext:"data_file_name_pattern,optional"`
 }
 
@@ -62,12 +62,27 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		config.LocalsFileNamePattern = `^locals.tf$`
 		logger.Debug("Config: local =  %s", config.LocalsFileNamePattern)
 	}
+	if config.ProviderFileNamePattern == "" {
+		config.ProviderFileNamePattern = `^provider.tf$`
+		logger.Debug("Config: provider =  %s", config.ProviderFileNamePattern)
+	}
+	if config.OutputFileNamePattern == "" {
+		config.OutputFileNamePattern = `^output.tf$`
+		logger.Debug("Config: output =  %s", config.OutputFileNamePattern)
+	}
+	if config.ModuleFileNamePattern == "" {
+		config.ModuleFileNamePattern = `^module.tf$`
+		logger.Debug("Config: module =  %s", config.ModuleFileNamePattern)
+	}
 	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
 		logger.Error("Error decoding rule config: %s", err)
 		return err
 	}
 	variableRe := regexp.MustCompile(config.VariableFileNamePattern)
 	localsRe := regexp.MustCompile(config.LocalsFileNamePattern)
+	providerRe := regexp.MustCompile(config.ProviderFileNamePattern)
+	outputRe := regexp.MustCompile(config.OutputFileNamePattern)
+	moduleRe := regexp.MustCompile(config.ModuleFileNamePattern)
 	for filename, file := range files {
 		logger.Debug("File: %s", filename)
 		blocks, err := GetBlocksFromBody(file.Body)
@@ -84,8 +99,23 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 			if len(*blocks) != len(blocks.Filter(Locals)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Locals block in `+filename, blocks.Exclude(Locals)[0].Range)
 			}
+		} else if providerRe.MatchString(filename) { //provider
+			logger.Debug("provider found %s", filename)
+			if len(*blocks) != len(blocks.Filter(Provider)) {
+				return runner.EmitIssue(r, `Do not declare anything other than Provider block in `+filename, blocks.Exclude(Provider)[0].Range)
+			}
+		} else if outputRe.MatchString(filename) { //output
+			logger.Debug("output found %s", filename)
+			if len(*blocks) != len(blocks.Filter(Output)) {
+				return runner.EmitIssue(r, `Do not declare anything other than output block in `+filename, blocks.Exclude(Output)[0].Range)
+			}
+		} else if moduleRe.MatchString(filename) { //module
+			logger.Debug("module found %s", filename)
+			if len(*blocks) != len(blocks.Filter(Module)) {
+				return runner.EmitIssue(r, `Do not declare anything other than Module block in `+filename, blocks.Exclude(Module)[0].Range)
+			}
 		} else { // reosurce
-			logger.Debug("resource")
+			logger.Debug("resource found %s", filename)
 			// check if there is any block other than resource
 			if len(*blocks) != len(blocks.Filter(Resource)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Resource block of `+toBlockName(filename)+` in `+filename, blocks.Exclude(Resource)[0].Range)
