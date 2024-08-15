@@ -75,7 +75,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		logger.Debug("Config: module =  %s", config.ModuleFileNamePattern)
 	}
 	if config.DataFileNamePattern == "" {
-		config.ModuleFileNamePattern = `^data_.*.tf$`
+		config.DataFileNamePattern = `^data_.*.tf$`
 		logger.Debug("Config: data =  %s", config.DataFileNamePattern)
 	}
 	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
@@ -87,7 +87,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 	providerRe := regexp.MustCompile(config.ProviderFileNamePattern)
 	outputRe := regexp.MustCompile(config.OutputFileNamePattern)
 	moduleRe := regexp.MustCompile(config.ModuleFileNamePattern)
-	dataRe := regexp.MustCompile(`^data.tf$`)
+	dataRe := regexp.MustCompile(config.DataFileNamePattern)
 	for filename, file := range files {
 		logger.Debug("File: %s", filename)
 		blocks, err := GetBlocksFromBody(file.Body)
@@ -125,7 +125,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 				return runner.EmitIssue(r, `Do not declare anything other than Data block of `+toBlockName(filename)+` in `+filename, blocks.Exclude(Data)[0].Range)
 			}
 			for _, data := range blocks.Filter(Data) {
-				if *data.Type+".tf" != filename {
+				if "data_"+*data.Type+".tf" != filename {
 					return runner.EmitIssue(r, `File name should be the same as the data type `+*data.Type+".tf", data.Range)
 				}
 			}

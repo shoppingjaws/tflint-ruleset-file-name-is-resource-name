@@ -3,6 +3,7 @@ package rules
 import (
 	"testing"
 
+	hcl "github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
@@ -45,46 +46,51 @@ locals {}
 		},
 		{
 			FileName: "aws_instance.tf",
-			Name:     "accept if file name is resource type",
+			Name:     "accept data if file name is data_$type",
 			Content: `
-		resource "aws_instance" "web" {
-				instance_type = "t2.micro"
-		}`,
+resource "aws_instance" "web" {
+		instance_type = "t2.micro"
+}`,
 			Expected: helper.Issues{},
 		},
-		// 		{
-		// 			FileName: "data_aws_instance.tf",
-		// 			Name:     "accept if file name is data type",
-		// 			Content: `
-		// data "aws_instance" "web" {
-		// 		instance_type = "t2.micro"
-		// }`,
-		// 			Expected: helper.Issues{},
-		// 		},
-		// 		{
-		// 			FileName: "variable.tf",
-		// 			Name:     "accept if file name is data type",
-		// 			Content: `
-		// variable "variable_name" {}`,
-		// 			Expected: helper.Issues{},
-		// 		},
-		// 		{
-		// 			FileName: "variable.tf",
-		// 			Name:     "decline the declaration of non variable block with variable.tf",
-		// 			Content: `
-		// resource "aws_instance" "web" {
-		//     instance_type = "t2.micro"
-		// }
-		// resource "aws_instance" "db" {
-		//     instance_type = "t2.micro"
-		// }
-		// `,
-		// 			Expected: helper.Issues{{
-		// 				Rule:    NewFileNameIsResourceNameRule(),
-		// 				Message: "Do not declare anything other than Variable block in variable.tf",
-		// 				Range:   hcl.Range{Filename: "variable.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 30}},
-		// 			}},
-		// 		},
+		{
+			FileName: "aws_instance.tf",
+			Name:     "decline resource if file name is $invalid_type",
+			Content: `
+resource "aws_security_group" "web" {
+}`,
+			Expected: helper.Issues{
+				{
+					Rule:    NewFileNameIsResourceNameRule(),
+					Message: "File name should be the same as the resource type aws_security_group.tf",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 36}},
+				},
+			},
+		},
+		{
+			FileName: "data_aws_instance.tf",
+			Name:     "decline data if file name is data_$invalid_type",
+			Content: `
+data "aws_security_group" "web" {
+}`,
+			Expected: helper.Issues{
+				{
+					Rule:    NewFileNameIsResourceNameRule(),
+					Message: "File name should be the same as the data type aws_security_group.tf",
+					Range: hcl.Range{
+						Filename: "data_aws_instance.tf", Start: hcl.Pos{Line: 2, Column: 1}, End: hcl.Pos{Line: 2, Column: 32}},
+				},
+			},
+		},
+		{
+			FileName: "data_aws_instance.tf",
+			Name:     "accept data if file name is data_$type",
+			Content: `
+data "aws_instance" "web" {
+}`,
+			Expected: helper.Issues{},
+		},
 	}
 
 	rule := NewFileNameIsResourceNameRule()
