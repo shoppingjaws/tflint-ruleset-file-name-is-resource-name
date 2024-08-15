@@ -1,5 +1,6 @@
 # TFLint Ruleset File name is resource name
-[![Build Status](https://github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/workflows/build/badge.svg?branch=main)](https://github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/actions)
+
+[![release](https://github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/actions/workflows/release.yml/badge.svg)](https://github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/actions/workflows/release.yml)
 
 ## Requirements
 
