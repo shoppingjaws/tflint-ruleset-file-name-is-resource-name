@@ -18,7 +18,7 @@ type FileNameIsResourceNameRuleConfig struct {
 	ProviderFileNamePattern string `hclext:"provider_file_name_pattern,optional"`
 	OutputFileNamePattern   string `hclext:"output_file_name_pattern,optional"`
 	ModuleFileNamePattern   string `hclext:"module_file_name_pattern,optional"`
-	// data_file_name_pattern     string `hclext:"data_file_name_pattern,optional"`
+	DataFileNamePattern     string `hclext:"data_file_name_pattern,optional"`
 }
 
 // NewFileNameIsResourceNameRule returns a new rule
@@ -74,6 +74,10 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 		config.ModuleFileNamePattern = `^module.tf$`
 		logger.Debug("Config: module =  %s", config.ModuleFileNamePattern)
 	}
+	if config.DataFileNamePattern == "" {
+		config.ModuleFileNamePattern = `^data_.*.tf$`
+		logger.Debug("Config: data =  %s", config.DataFileNamePattern)
+	}
 	if err := runner.DecodeRuleConfig(r.Name(), config); err != nil {
 		logger.Error("Error decoding rule config: %s", err)
 		return err
@@ -83,6 +87,7 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 	providerRe := regexp.MustCompile(config.ProviderFileNamePattern)
 	outputRe := regexp.MustCompile(config.OutputFileNamePattern)
 	moduleRe := regexp.MustCompile(config.ModuleFileNamePattern)
+	dataRe := regexp.MustCompile(`^data.tf$`)
 	for filename, file := range files {
 		logger.Debug("File: %s", filename)
 		blocks, err := GetBlocksFromBody(file.Body)
@@ -113,6 +118,16 @@ func (r *FileNameIsResourceNameRule) Check(runner tflint.Runner) error {
 			logger.Debug("module found %s", filename)
 			if len(*blocks) != len(blocks.Filter(Module)) {
 				return runner.EmitIssue(r, `Do not declare anything other than Module block in `+filename, blocks.Exclude(Module)[0].Range)
+			}
+		} else if dataRe.MatchString(filename) { //data
+			logger.Debug("data found %s", filename)
+			if len(*blocks) != len(blocks.Filter(Data)) {
+				return runner.EmitIssue(r, `Do not declare anything other than Data block of `+toBlockName(filename)+` in `+filename, blocks.Exclude(Data)[0].Range)
+			}
+			for _, data := range blocks.Filter(Data) {
+				if *data.Type+".tf" != filename {
+					return runner.EmitIssue(r, `File name should be the same as the data type `+*data.Type+".tf", data.Range)
+				}
 			}
 		} else { // reosurce
 			logger.Debug("resource found %s", filename)
