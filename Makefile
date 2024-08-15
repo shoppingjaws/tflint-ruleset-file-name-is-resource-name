@@ -1,8 +1,7 @@
 default: build
 
 test:
-	echo hello
-	# go test ./...
+	go test ./...
 
 build:
 	go build

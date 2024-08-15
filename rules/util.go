@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"regexp"
+
 	hcl "github.com/hashicorp/hcl/v2"
 )
 
@@ -116,4 +118,10 @@ func safeAccess[T any](arr []T, index int) *T {
 		return &arr[len(arr)+index]
 	}
 	return nil
+}
+
+func toBlockName(filename string) string {
+	re := regexp.MustCompile(`\.tf$`)
+	result := re.ReplaceAllString(filename, "")
+	return result
 }

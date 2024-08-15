@@ -15,8 +15,8 @@ func Test_FileNameIsResourceName(t *testing.T) {
 		Expected helper.Issues
 	}{
 		{
-			FileName: "variable.tf",
-			Name:     "accept if file name is variable type",
+			FileName: "variables.tf",
+			Name:     "accept variable if file name is variables.tf with config",
 			Content: `
 variable "variable_name" {}
 `,
@@ -27,15 +27,31 @@ rule "file_name_is_resource_name" {
 }`,
 			Expected: helper.Issues{},
 		},
-		// 		{
-		// 			FileName: "aws_instance.tf",
-		// 			Name:     "accept if file name is resource type",
-		// 			Content: `
-		// resource "aws_instance" "web" {
-		// 		instance_type = "t2.micro"
-		// }`,
-		// 			Expected: helper.Issues{},
-		// 		},
+		{
+			FileName: "variable.tf",
+			Name:     "accept variable if file name is variable.tf with config",
+			Content: `
+variable "variable_name" {}
+`,
+			Expected: helper.Issues{},
+		},
+		{
+			FileName: "locals.tf",
+			Name:     "accept locals block if file name is locals.tf without config",
+			Content: `
+locals {}
+`,
+			Expected: helper.Issues{},
+		},
+		{
+			FileName: "aws_instance.tf",
+			Name:     "accept if file name is resource type",
+			Content: `
+		resource "aws_instance" "web" {
+				instance_type = "t2.micro"
+		}`,
+			Expected: helper.Issues{},
+		},
 		// 		{
 		// 			FileName: "data_aws_instance.tf",
 		// 			Name:     "accept if file name is data type",
@@ -75,7 +91,7 @@ rule "file_name_is_resource_name" {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			runner := helper.TestRunner(t, map[string]string{test.FileName: test.Content})
+			runner := helper.TestRunner(t, map[string]string{test.FileName: test.Content, ".tflint.hcl": test.Config})
 
 			if err := rule.Check(runner); err != nil {
 				t.Fatalf("Unexpected error occurred: %s", err)
