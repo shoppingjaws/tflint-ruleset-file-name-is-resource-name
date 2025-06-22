@@ -1,4 +1,4 @@
-module github.com/terraform-linters/tflint-ruleset-template
+module github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name
 
 go 1.24.0
 
