@@ -10,31 +10,31 @@ import (
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
 
-type TerraformVariableFileNameRule struct {
+type TerraformBlockFileNameRule struct {
 	tflint.DefaultRule
 }
 
-func NewTerraformVariableFileNameRule() *TerraformVariableFileNameRule {
-	return &TerraformVariableFileNameRule{}
+func NewTerraformBlockFileNameRule() *TerraformBlockFileNameRule {
+	return &TerraformBlockFileNameRule{}
 }
 
-func (r *TerraformVariableFileNameRule) Name() string {
+func (r *TerraformBlockFileNameRule) Name() string {
 	return "terraform_block_file_name"
 }
 
-func (r *TerraformVariableFileNameRule) Enabled() bool {
+func (r *TerraformBlockFileNameRule) Enabled() bool {
 	return true
 }
 
-func (r *TerraformVariableFileNameRule) Severity() tflint.Severity {
+func (r *TerraformBlockFileNameRule) Severity() tflint.Severity {
 	return tflint.ERROR
 }
 
-func (r *TerraformVariableFileNameRule) Link() string {
+func (r *TerraformBlockFileNameRule) Link() string {
 	return ""
 }
 
-func (r *TerraformVariableFileNameRule) Check(runner tflint.Runner) error {
+func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
 	path, err := runner.GetModulePath()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (r *TerraformVariableFileNameRule) Check(runner tflint.Runner) error {
 	return nil
 }
 
-func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename string, file *hcl.File) error {
+func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename string, file *hcl.File) error {
 	basename := filepath.Base(filename)
 	
 	if !strings.HasSuffix(basename, ".tf") {

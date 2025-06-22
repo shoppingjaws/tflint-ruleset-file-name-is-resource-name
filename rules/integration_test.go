@@ -8,7 +8,7 @@ import (
 	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
-func Test_TerraformVariableFileNameRule_FixIntegration(t *testing.T) {
+func Test_TerraformBlockFileNameRule_FixIntegration(t *testing.T) {
 	tests := []struct {
 		name          string
 		files         map[string]string
@@ -64,7 +64,7 @@ variable "new" {
 		},
 	}
 
-	rule := NewTerraformVariableFileNameRule()
+	rule := NewTerraformBlockFileNameRule()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

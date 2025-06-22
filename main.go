@@ -12,7 +12,7 @@ func main() {
 			Name:    "file-name-is-resource-name",
 			Version: "0.1.0",
 			Rules: []tflint.Rule{
-				rules.NewTerraformVariableFileNameRule(),
+				rules.NewTerraformBlockFileNameRule(),
 			},
 		},
 	})

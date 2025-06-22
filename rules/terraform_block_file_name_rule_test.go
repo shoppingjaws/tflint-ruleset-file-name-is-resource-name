@@ -7,7 +7,7 @@ import (
 	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
-func Test_TerraformVariableFileNameRule(t *testing.T) {
+func Test_TerraformBlockFileNameRule(t *testing.T) {
 	tests := []struct {
 		name     string
 		files    map[string]string
@@ -37,7 +37,7 @@ variable "example" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Variable block should be declared in variables.tf, not in main.tf",
 					Range: hcl.Range{
 						Filename: "main.tf",
@@ -61,7 +61,7 @@ variable "second" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Variable block should be declared in variables.tf, not in config.tf",
 					Range: hcl.Range{
 						Filename: "config.tf",
@@ -70,7 +70,7 @@ variable "second" {
 					},
 				},
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Variable block should be declared in variables.tf, not in config.tf",
 					Range: hcl.Range{
 						Filename: "config.tf",
@@ -121,7 +121,7 @@ resource "aws_instance" "example" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Only variable blocks should be declared in variables.tf, found resource block",
 					Range: hcl.Range{
 						Filename: "variables.tf",
@@ -141,7 +141,7 @@ output "instance_id" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Output block should be declared in outputs.tf, not in variables.tf",
 					Range: hcl.Range{
 						Filename: "variables.tf",
@@ -162,7 +162,7 @@ output "instance_id" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Output block should be declared in outputs.tf, not in main.tf",
 					Range: hcl.Range{
 						Filename: "main.tf",
@@ -196,7 +196,7 @@ locals {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Locals block should be declared in locals.tf, not in main.tf",
 					Range: hcl.Range{
 						Filename: "main.tf",
@@ -229,7 +229,7 @@ variable "should_not_be_here" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Variable block should be declared in variables.tf, not in outputs.tf",
 					Range: hcl.Range{
 						Filename: "outputs.tf",
@@ -249,7 +249,7 @@ resource "aws_instance" "should_not_be_here" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Only output blocks should be declared in outputs.tf, found resource block",
 					Range: hcl.Range{
 						Filename: "outputs.tf",
@@ -269,7 +269,7 @@ output "should_not_be_here" {
 			},
 			expected: helper.Issues{
 				{
-					Rule:    NewTerraformVariableFileNameRule(),
+					Rule:    NewTerraformBlockFileNameRule(),
 					Message: "Output block should be declared in outputs.tf, not in locals.tf",
 					Range: hcl.Range{
 						Filename: "locals.tf",
@@ -281,7 +281,7 @@ output "should_not_be_here" {
 		},
 	}
 
-	rule := NewTerraformVariableFileNameRule()
+	rule := NewTerraformBlockFileNameRule()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
