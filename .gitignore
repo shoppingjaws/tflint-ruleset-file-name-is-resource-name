@@ -3,3 +3,5 @@
 
 # test generated files
 rules/variables.tf
+rules/testdata/working/
+rules/testdata/demo/
