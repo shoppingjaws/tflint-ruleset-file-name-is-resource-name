@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/rules"
 	"github.com/terraform-linters/tflint-plugin-sdk/plugin"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
-	"github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name/rules"
 )
 
 func main() {

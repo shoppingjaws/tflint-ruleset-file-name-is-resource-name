@@ -14,16 +14,16 @@ func Test_BlockManager_AppendToFile(t *testing.T) {
 		expectedResult  string
 	}{
 		{
-			name:           "create new file",
+			name:            "create new file",
 			existingContent: "",
-			newContent:     "variable \"example\" {\n  type = string\n}",
-			expectedResult: "variable \"example\" {\n  type = string\n}",
+			newContent:      "variable \"example\" {\n  type = string\n}",
+			expectedResult:  "variable \"example\" {\n  type = string\n}",
 		},
 		{
-			name: "append to existing file",
+			name:            "append to existing file",
 			existingContent: "variable \"existing\" {\n  type = string\n}",
 			newContent:      "variable \"new\" {\n  type = number\n}",
-			expectedResult: "variable \"existing\" {\n  type = string\n}\n\nvariable \"new\" {\n  type = number\n}",
+			expectedResult:  "variable \"existing\" {\n  type = string\n}\n\nvariable \"new\" {\n  type = number\n}",
 		},
 	}
 
@@ -37,7 +37,7 @@ func Test_BlockManager_AppendToFile(t *testing.T) {
 			defer os.RemoveAll(filepath.Join("testdata", "block_manager"))
 
 			targetFile := filepath.Join(testDir, "variables.tf")
-			
+
 			if test.existingContent != "" {
 				if err := os.WriteFile(targetFile, []byte(test.existingContent), 0644); err != nil {
 					t.Fatalf("Failed to write existing content: %s", err)

@@ -41,10 +41,10 @@ func CreateDemoFiles(t *testing.T, demoDir string) {
 	// Demo 1: Create variables.tf from scratch
 	t.Run("demo_create_variables_tf", func(t *testing.T) {
 		targetFile := filepath.Join(demoDir, "variables.tf")
-		
+
 		// Remove if exists
 		os.Remove(targetFile)
-		
+
 		content := `variable "demo_var" {
   description = "A demo variable"
   type        = string
@@ -62,7 +62,7 @@ func CreateDemoFiles(t *testing.T, demoDir string) {
 	// Demo 2: Append to existing variables.tf
 	t.Run("demo_append_to_variables_tf", func(t *testing.T) {
 		targetFile := filepath.Join(demoDir, "variables.tf")
-		
+
 		additionalContent := `
 variable "another_var" {
   type = number

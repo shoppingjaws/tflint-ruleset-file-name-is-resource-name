@@ -60,7 +60,7 @@ func (bm *BlockManager) ExtractBlockText(block *hclext.Block) (string, error) {
 
 	content := string(sourceFile.Bytes)
 	lines := strings.Split(content, "\n")
-	
+
 	// Use DefRange for precise extraction
 	startLine := block.DefRange.Start.Line - 1 // Convert to 0-based
 	if startLine >= len(lines) {
@@ -73,10 +73,10 @@ func (bm *BlockManager) ExtractBlockText(block *hclext.Block) (string, error) {
 	endLine := startLine
 	inString := false
 	inComment := false
-	
+
 	for lineNum := startLine; lineNum < len(lines); lineNum++ {
 		line := lines[lineNum]
-		
+
 		for i, char := range line {
 			// Handle string literals to avoid counting braces within strings
 			if char == '"' && !inComment {
@@ -88,25 +88,25 @@ func (bm *BlockManager) ExtractBlockText(block *hclext.Block) (string, error) {
 					for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
 						backslashCount++
 					}
-					escaped = (backslashCount % 2 == 1)
+					escaped = (backslashCount%2 == 1)
 				}
 				if !escaped {
 					inString = !inString
 				}
 				continue
 			}
-			
+
 			// Handle single-line comments
 			if !inString && i < len(line)-1 && line[i] == '/' && line[i+1] == '/' {
 				inComment = true
 				break // Skip rest of line
 			}
-			
+
 			// Skip processing if we're in a string or comment
 			if inString || inComment {
 				continue
 			}
-			
+
 			if char == '{' {
 				foundStart = true
 				braceCount++
@@ -115,12 +115,12 @@ func (bm *BlockManager) ExtractBlockText(block *hclext.Block) (string, error) {
 				if braceCount == 0 {
 					endLine = lineNum
 					// Extract the complete block including the closing brace line
-					blockLines := lines[startLine:endLine+1]
+					blockLines := lines[startLine : endLine+1]
 					return strings.Join(blockLines, "\n"), nil
 				}
 			}
 		}
-		
+
 		// Reset comment flag at end of line
 		inComment = false
 	}
@@ -142,7 +142,7 @@ func (bm *BlockManager) RemoveBlockFromFile(block *hclext.Block) error {
 	}
 
 	lines := strings.Split(string(content), "\n")
-	
+
 	// Check if the block still exists at the expected location
 	startPos := block.DefRange.Start
 	if startPos.Line > len(lines) {
@@ -248,29 +248,29 @@ func (bm *BlockManager) findBlockEnd(bytes []byte, startOffset int) int {
 
 	for i := startOffset; i < len(bytes); i++ {
 		char := bytes[i]
-		
+
 		// Handle string literals to avoid counting braces within strings
 		if char == '"' && !inComment {
 			inString = !inString
 			continue
 		}
-		
+
 		// Handle comments
 		if !inString && i < len(bytes)-1 && bytes[i] == '/' && bytes[i+1] == '/' {
 			inComment = true
 			continue
 		}
-		
+
 		if inComment && char == '\n' {
 			inComment = false
 			continue
 		}
-		
+
 		// Skip processing if we're in a string or comment
 		if inString || inComment {
 			continue
 		}
-		
+
 		if char == '{' {
 			foundFirstBrace = true
 			braceCount++
@@ -301,7 +301,7 @@ func (bm *BlockManager) findBlockLines(lines []string, block *hclext.Block) (int
 
 	for lineNum := startLine; lineNum < len(lines); lineNum++ {
 		line := lines[lineNum]
-		
+
 		for _, char := range line {
 			if char == '{' {
 				foundStart = true
@@ -364,7 +364,7 @@ func (bm *BlockManager) appendToTargetFile(targetFile, content string) error {
 		// Content is empty or braces don't match, skip adding
 		return nil
 	}
-	
+
 	// Check if the block is effectively empty (only has block declaration with empty body)
 	lines := strings.Split(trimmedContent, "\n")
 	nonEmptyLines := 0
@@ -374,9 +374,9 @@ func (bm *BlockManager) appendToTargetFile(targetFile, content string) error {
 		if trimmedLine != "" && trimmedLine != "{" && trimmedLine != "}" {
 			nonEmptyLines++
 			// Look for actual content beyond just the block type declaration
-			if !strings.HasPrefix(trimmedLine, "locals") && 
-			   !strings.HasPrefix(trimmedLine, "output") && 
-			   !strings.HasPrefix(trimmedLine, "variable") {
+			if !strings.HasPrefix(trimmedLine, "locals") &&
+				!strings.HasPrefix(trimmedLine, "output") &&
+				!strings.HasPrefix(trimmedLine, "variable") {
 				hasRealContent = true
 			}
 		}
@@ -424,7 +424,7 @@ func (bm *BlockManager) removeBlockFromRealFile(block *hclext.Block) error {
 	if err := bm.RemoveBlockFromFile(block); err != nil {
 		return err
 	}
-	
+
 	// Then clean up any empty blocks of the same type that might be left
 	return bm.cleanupEmptyBlocksInFile(block.DefRange.Filename, block.Type)
 }
@@ -438,7 +438,7 @@ func (bm *BlockManager) cleanupEmptyBlocksInFile(filename, blockType string) err
 
 	contentStr := string(content)
 	original := contentStr
-	
+
 	// Define patterns for empty blocks based on block type
 	switch blockType {
 	case "locals":
@@ -451,7 +451,7 @@ func (bm *BlockManager) cleanupEmptyBlocksInFile(filename, blockType string) err
 		// Remove empty variable blocks: variable "name" { }
 		contentStr = removeEmptyBlockPattern(contentStr, `(?m)^\s*variable\s*"[^"]*"\s*\{\s*\}\s*\n?`)
 	}
-	
+
 	// Only write back if content changed
 	if contentStr != original {
 		if err := os.WriteFile(filename, []byte(contentStr), 0644); err != nil {
