@@ -2,6 +2,6 @@
 /tflint-ruleset-template
 
 # test generated files
-rules/variables.tf
 rules/testdata/working/
 rules/testdata/demo/
+tflint-ruleset-file-name-is-resource-name
