@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
@@ -41,52 +40,78 @@ func (bm *BlockMover) moveBlock(block *hclext.Block, sourceFile, targetFile stri
 }
 
 func (bm *BlockMover) extractBlockContent(block *hclext.Block) (string, error) {
-	f := hclwrite.NewEmptyFile()
-	body := f.Body()
+	// ソースファイルから直接テキストを抽出
+	files, err := bm.runner.GetFiles()
+	if err != nil {
+		return "", fmt.Errorf("failed to get files: %w", err)
+	}
 
-	newBlock := body.AppendNewBlock(block.Type, block.Labels)
-	newBlockBody := newBlock.Body()
+	sourceFile, exists := files[block.DefRange.Filename]
+	if !exists {
+		return "", fmt.Errorf("source file not found: %s", block.DefRange.Filename)
+	}
 
-	for name, attr := range block.Body.Attributes {
-		if attr.Expr != nil {
-			val, diags := attr.Expr.Value(nil)
-			if diags.HasErrors() {
-				return "", fmt.Errorf("failed to evaluate attribute %s: %s", name, diags.Error())
+	// HCLブロックの完全な範囲を取得（TypeRangeやBodyRangeを考慮）
+	// DefRangeはブロック定義の開始のみを表すため、ブロック全体を取得する必要がある
+	
+	// 開始位置はDefRangeから
+	startPos := block.DefRange.Start
+	
+	// 終了位置を見つけるため、BodyRangeまたは手動で探す
+	content := string(sourceFile.Bytes)
+	
+	// ブロックが始まる行から、対応する閉じ括弧を見つける
+	startLine := startPos.Line - 1
+	startCol := startPos.Column - 1
+	
+	// 文字ベースで処理
+	bytes := []byte(content)
+	startOffset := 0
+	
+	// 開始位置を計算
+	currentLine := 0
+	for i, b := range bytes {
+		if currentLine == startLine {
+			startOffset = i + startCol
+			break
+		}
+		if b == '\n' {
+			currentLine++
+		}
+	}
+	
+	// 開始位置から閉じ括弧を探す
+	braceCount := 0
+	inBlock := false
+	endOffset := startOffset
+	
+	for i := startOffset; i < len(bytes); i++ {
+		char := bytes[i]
+		
+		if char == '{' {
+			inBlock = true
+			braceCount++
+		} else if char == '}' && inBlock {
+			braceCount--
+			if braceCount == 0 {
+				endOffset = i + 1
+				break
 			}
-			newBlockBody.SetAttributeValue(name, val)
 		}
 	}
-
-	for _, nestedBlock := range block.Body.Blocks {
-		nestedNewBlock := newBlockBody.AppendNewBlock(nestedBlock.Type, nestedBlock.Labels)
-		if err := bm.copyBlockBody(nestedBlock.Body, nestedNewBlock.Body()); err != nil {
-			return "", fmt.Errorf("failed to copy nested block: %w", err)
-		}
+	
+	if endOffset <= startOffset {
+		return "", fmt.Errorf("could not find end of block")
 	}
-
-	return string(f.Bytes()), nil
+	
+	return string(bytes[startOffset:endOffset]), nil
 }
 
-func (bm *BlockMover) copyBlockBody(source *hclext.BodyContent, target *hclwrite.Body) error {
-	for name, attr := range source.Attributes {
-		if attr.Expr != nil {
-			val, diags := attr.Expr.Value(nil)
-			if diags.HasErrors() {
-				return fmt.Errorf("failed to evaluate attribute %s: %s", name, diags.Error())
-			}
-			target.SetAttributeValue(name, val)
-		}
-	}
-
-	for _, block := range source.Blocks {
-		newBlock := target.AppendNewBlock(block.Type, block.Labels)
-		if err := bm.copyBlockBody(block.Body, newBlock.Body()); err != nil {
-			return fmt.Errorf("failed to copy nested block: %w", err)
-		}
-	}
-
-	return nil
-}
+// copyBlockBody is no longer used since we extract text directly
+// func (bm *BlockMover) copyBlockBody(source *hclext.BodyContent, target *hclwrite.Body) error {
+//	// This function is deprecated in favor of direct text extraction
+//	return nil
+// }
 
 func (bm *BlockMover) appendToTargetFile(targetFile, content string) error {
 	var existingContent []byte
@@ -121,11 +146,30 @@ func (bm *BlockMover) appendToTargetFile(targetFile, content string) error {
 
 func (bm *BlockMover) CreateFixFunction(blockType string, block *hclext.Block, targetFileName string) func(f tflint.Fixer) error {
 	return func(f tflint.Fixer) error {
-		if err := f.Remove(block.DefRange); err != nil {
-			return err
+		// シンプルなアプローチ: TFLint Plugin SDKの制限を回避
+		// ファイル全体を読み取り、ブロックを除去して書き換える
+		
+		// ブロックの内容を抽出
+		blockContent, err := bm.extractBlockContent(block)
+		if err != nil {
+			return fmt.Errorf("failed to extract block content: %w", err)
 		}
 
-		return bm.MoveBlockToFile(blockType, block, targetFileName)
+		// ターゲットファイルに移動
+		sourceFile := block.DefRange.Filename
+		sourceDir := filepath.Dir(sourceFile)
+		targetFile := filepath.Join(sourceDir, targetFileName)
+
+		if err := bm.appendToTargetFile(targetFile, blockContent); err != nil {
+			return fmt.Errorf("failed to append to target file: %w", err)
+		}
+
+		// ソースファイルからブロックを削除
+		if err := bm.removeBlockFromSourceFile(block); err != nil {
+			return fmt.Errorf("failed to remove block from source file: %w", err)
+		}
+
+		return nil
 	}
 }
 

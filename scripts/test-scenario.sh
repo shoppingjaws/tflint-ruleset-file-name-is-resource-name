@@ -47,8 +47,8 @@ echo "=== Running tflint ==="
 cd "$SCENARIO_DIR"
 
 # Check if tflint config exists, if not create basic one
-if [ ! -f ".tflintrc" ]; then
-    cat > .tflintrc << EOF
+if [ ! -f ".tflint.hcl" ]; then
+    cat > .tflint.hcl << EOF
 plugin "file-name-is-resource-name" {
   enabled = true
 }
