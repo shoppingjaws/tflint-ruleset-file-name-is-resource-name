@@ -61,3 +61,8 @@ After implementing rules, test locally:
 1. `make install` - installs plugin to `~/.tflint.d/plugins`
 2. Create test Terraform files with naming violations
 3. Run `tflint` to verify rules trigger correctly
+```
+
+## Memories
+
+- TFLint plugin SDKの制限を回避するために、空ブロックの削除を追加
