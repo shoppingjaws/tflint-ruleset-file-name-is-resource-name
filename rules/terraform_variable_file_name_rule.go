@@ -119,10 +119,14 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 
 		if block.Type == "variable" {
 			if basename != "variables.tf" {
-				if err := runner.EmitIssue(
+				blockMover := NewBlockMover(runner)
+				fixFunc := blockMover.CreateFixFunction("variable", block, "variables.tf")
+				
+				if err := runner.EmitIssueWithFix(
 					r,
 					fmt.Sprintf("Variable block should be declared in variables.tf, not in %s", basename),
 					blockRange,
+					fixFunc,
 				); err != nil {
 					return err
 				}
