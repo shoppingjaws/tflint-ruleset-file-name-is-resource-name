@@ -71,6 +71,39 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 				LabelNames: []string{"name"},
 				Body: &hclext.BodySchema{},
 			},
+			{
+				Type: "resource",
+				LabelNames: []string{"type", "name"},
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "data",
+				LabelNames: []string{"type", "name"},
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "module",
+				LabelNames: []string{"name"},
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "output",
+				LabelNames: []string{"name"},
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "provider",
+				LabelNames: []string{"name"},
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "terraform",
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "locals",
+				Body: &hclext.BodySchema{},
+			},
 		},
 	}, &tflint.GetModuleContentOption{ExpandMode: tflint.ExpandModeNone})
 	if diags != nil {
@@ -78,17 +111,27 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 	}
 
 	for _, block := range body.Blocks {
-		if block.Type == "variable" {
-			blockRange := block.DefRange
-			
-			if blockRange.Filename != filename {
-				continue
-			}
+		blockRange := block.DefRange
+		
+		if blockRange.Filename != filename {
+			continue
+		}
 
+		if block.Type == "variable" {
 			if basename != "variables.tf" {
 				if err := runner.EmitIssue(
 					r,
 					fmt.Sprintf("Variable block should be declared in variables.tf, not in %s", basename),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else {
+			if basename == "variables.tf" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only variable blocks should be declared in variables.tf, found %s block", block.Type),
 					blockRange,
 				); err != nil {
 					return err

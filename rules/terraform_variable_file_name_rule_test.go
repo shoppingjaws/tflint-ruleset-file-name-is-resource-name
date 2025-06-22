@@ -107,6 +107,50 @@ resource "aws_instance" "example" {
 			},
 			expected: helper.Issues{},
 		},
+		{
+			name: "resource block in variables.tf - invalid",
+			files: map[string]string{
+				"variables.tf": `
+variable "instance_type" {
+  type = string
+}
+
+resource "aws_instance" "example" {
+  ami = "ami-12345678"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Only variable blocks should be declared in variables.tf, found resource block",
+					Range: hcl.Range{
+						Filename: "variables.tf",
+						Start:    hcl.Pos{Line: 6, Column: 1},
+						End:      hcl.Pos{Line: 6, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in variables.tf - invalid",
+			files: map[string]string{
+				"variables.tf": `
+output "instance_id" {
+  value = "test"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Only variable blocks should be declared in variables.tf, found output block",
+					Range: hcl.Range{
+						Filename: "variables.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 21},
+					},
+				},
+			},
+		},
 	}
 
 	rule := NewTerraformVariableFileNameRule()
