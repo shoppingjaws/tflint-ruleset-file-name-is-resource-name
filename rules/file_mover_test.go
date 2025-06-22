@@ -4,84 +4,58 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
-func Test_TerraformVariableFileNameRule_WithFix(t *testing.T) {
+func Test_BlockMover_AppendToFile(t *testing.T) {
 	tests := []struct {
-		name          string
-		files         map[string]string
-		expectedIssues helper.Issues
-		expectedFixes map[string]string
+		name            string
+		existingContent string
+		newContent      string
+		expectedResult  string
 	}{
 		{
-			name: "variable in main.tf should be moved to variables.tf with fix",
-			files: map[string]string{
-				"main.tf": `
-variable "example" {
-  description = "An example variable"
-  type        = string
-  default     = "hello"
-}
-
-resource "aws_instance" "example" {
-  ami           = "ami-12345678"
-  instance_type = var.example
-}`,
-			},
-			expectedIssues: helper.Issues{
-				{
-					Rule:    NewTerraformVariableFileNameRule(),
-					Message: "Variable block should be declared in variables.tf, not in main.tf",
-				},
-			},
-			expectedFixes: map[string]string{
-				"variables.tf": `
-variable "example" {
-  description = "An example variable"
-  type        = string
-  default     = "hello"
-}
-`,
-				"main.tf": `
-
-resource "aws_instance" "example" {
-  ami           = "ami-12345678"
-  instance_type = var.example
-}`,
-			},
+			name:           "create new file",
+			existingContent: "",
+			newContent:     "variable \"example\" {\n  type = string\n}",
+			expectedResult: "variable \"example\" {\n  type = string\n}",
+		},
+		{
+			name: "append to existing file",
+			existingContent: "variable \"existing\" {\n  type = string\n}",
+			newContent:      "variable \"new\" {\n  type = number\n}",
+			expectedResult: "variable \"existing\" {\n  type = string\n}\n\nvariable \"new\" {\n  type = number\n}",
 		},
 	}
 
-	rule := NewTerraformVariableFileNameRule()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tempDir := t.TempDir()
+			// Use project testdata directory for easy verification
+			testDir := filepath.Join("testdata", "file_mover", t.Name())
+			if err := os.MkdirAll(testDir, 0755); err != nil {
+				t.Fatalf("Failed to create test directory: %s", err)
+			}
+			defer os.RemoveAll(filepath.Join("testdata", "file_mover"))
+
+			targetFile := filepath.Join(testDir, "variables.tf")
 			
-			for filename, content := range test.files {
-				fullPath := filepath.Join(tempDir, filename)
-				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-					t.Fatalf("Failed to write test file %s: %s", filename, err)
+			if test.existingContent != "" {
+				if err := os.WriteFile(targetFile, []byte(test.existingContent), 0644); err != nil {
+					t.Fatalf("Failed to write existing content: %s", err)
 				}
 			}
 
-			runner := helper.TestRunner(t, test.files)
-
-			if err := rule.Check(runner); err != nil {
-				t.Fatalf("Unexpected error occurred: %s", err)
+			blockMover := &BlockMover{}
+			if err := blockMover.appendToTargetFile(targetFile, test.newContent); err != nil {
+				t.Fatalf("Failed to append to target file: %s", err)
 			}
 
-			if len(runner.Issues) != len(test.expectedIssues) {
-				t.Fatalf("Expected %d issues, got %d", len(test.expectedIssues), len(runner.Issues))
+			actualContent, err := os.ReadFile(targetFile)
+			if err != nil {
+				t.Fatalf("Failed to read result file: %s", err)
 			}
 
-			for i, issue := range runner.Issues {
-				expectedIssue := test.expectedIssues[i]
-				if issue.Message != expectedIssue.Message {
-					t.Errorf("Expected message '%s', got '%s'", expectedIssue.Message, issue.Message)
-				}
+			if string(actualContent) != test.expectedResult {
+				t.Errorf("Content mismatch\nExpected: %q\nActual: %q", test.expectedResult, string(actualContent))
 			}
 		})
 	}

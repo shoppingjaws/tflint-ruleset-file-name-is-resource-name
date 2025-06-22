@@ -128,3 +128,15 @@ func (bm *BlockMover) CreateFixFunction(blockType string, block *hclext.Block, t
 		return bm.MoveBlockToFile(blockType, block, targetFileName)
 	}
 }
+
+func (bm *BlockMover) CreateFixFunctionForTestDir(blockType string, block *hclext.Block, targetFileName, testDir string) func(f tflint.Fixer) error {
+	return func(f tflint.Fixer) error {
+		if err := f.Remove(block.DefRange); err != nil {
+			return err
+		}
+
+		targetFile := filepath.Join(testDir, targetFileName)
+
+		return bm.moveBlock(block, block.DefRange.Filename, targetFile)
+	}
+}
