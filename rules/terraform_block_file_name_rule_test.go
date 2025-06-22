@@ -81,7 +81,7 @@ variable "second" {
 			},
 		},
 		{
-			name: "no variables - valid",
+			name: "resource in main.tf - invalid (should be in resource-specific file)",
 			files: map[string]string{
 				"main.tf": `
 resource "aws_instance" "example" {
@@ -89,10 +89,20 @@ resource "aws_instance" "example" {
   instance_type = "t2.micro"
 }`,
 			},
-			expected: helper.Issues{},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
 		},
 		{
-			name: "mixed content with variables in correct file - valid",
+			name: "mixed content with variables in correct file but resource in wrong file - invalid",
 			files: map[string]string{
 				"variables.tf": `
 variable "instance_type" {
@@ -105,7 +115,17 @@ resource "aws_instance" "example" {
   instance_type = var.instance_type
 }`,
 			},
-			expected: helper.Issues{},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
 		},
 		{
 			name: "resource block in variables.tf - invalid",
@@ -122,7 +142,7 @@ resource "aws_instance" "example" {
 			expected: helper.Issues{
 				{
 					Rule:    NewTerraformBlockFileNameRule(),
-					Message: "Only variable blocks should be declared in variables.tf, found resource block",
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in variables.tf",
 					Range: hcl.Range{
 						Filename: "variables.tf",
 						Start:    hcl.Pos{Line: 6, Column: 1},
@@ -250,7 +270,7 @@ resource "aws_instance" "should_not_be_here" {
 			expected: helper.Issues{
 				{
 					Rule:    NewTerraformBlockFileNameRule(),
-					Message: "Only output blocks should be declared in outputs.tf, found resource block",
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in outputs.tf",
 					Range: hcl.Range{
 						Filename: "outputs.tf",
 						Start:    hcl.Pos{Line: 2, Column: 1},
@@ -275,6 +295,130 @@ output "should_not_be_here" {
 						Filename: "locals.tf",
 						Start:    hcl.Pos{Line: 2, Column: 1},
 						End:      hcl.Pos{Line: 2, Column: 28},
+					},
+				},
+			},
+		},
+		{
+			name: "aws_instance resource in aws_instance.tf - valid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "aws_instance resource in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "aws_iam_role resource in wrong file - invalid",
+			files: map[string]string{
+				"security.tf": `
+resource "aws_iam_role" "example" {
+  name = "example"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_iam_role' should be declared in aws_iam_role.tf, not in security.tf",
+					Range: hcl.Range{
+						Filename: "security.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple aws_instance resources in aws_instance.tf - valid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_instance" "web" {
+  ami = "ami-12345678"
+}
+
+resource "aws_instance" "db" {
+  ami = "ami-87654321"
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "wrong resource type in aws_instance.tf - invalid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_s3_bucket" "example" {
+  bucket = "my-bucket"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_s3_bucket' should be declared in aws_s3_bucket.tf, not in aws_instance.tf",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 35},
+					},
+				},
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Only 'aws_instance' resource blocks should be declared in aws_instance.tf, found 'aws_s3_bucket' resource block",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 35},
+					},
+				},
+			},
+		},
+		{
+			name: "variable block in aws_instance.tf - invalid",
+			files: map[string]string{
+				"aws_instance.tf": `
+variable "instance_type" {
+  type = string
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in aws_instance.tf",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 25},
+					},
+				},
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Only 'aws_instance' resource blocks should be declared in aws_instance.tf, found variable block",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 25},
 					},
 				},
 			},

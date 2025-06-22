@@ -6,11 +6,6 @@ test:
 	@# Clean up test artifacts
 	@rm -f rules/variables.tf rules/output.tf rules/module.tf rules/provider.tf
 
-.PHONY: test-keep-files
-test-keep-files:
-	go test ./...
-	@echo "Test files preserved in rules/testdata/ for inspection"
-
 .PHONY: build
 build:
 	go build
@@ -19,12 +14,6 @@ build:
 install: build
 	mkdir -p ~/.tflint.d/plugins
 	mv ./tflint-ruleset-file-name-is-resource-name ~/.tflint.d/plugins
-
-.PHONY: clean
-clean:
-	rm -f ./tflint-ruleset-file-name-is-resource-name
-	rm -f rules/variables.tf rules/output.tf rules/module.tf rules/provider.tf  
-	rm -rf rules/testdata
 
 .PHONY: clean-testdata
 clean-testdata:

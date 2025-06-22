@@ -175,5 +175,28 @@ resource "aws_instance" "example" {
   ami = "ami-12345678"
 }`,
 		},
+		"scenario4_resource_specific_files": {
+			"aws_instance.tf": `resource "aws_instance" "correct" {
+  ami = "ami-12345678"
+}
+
+resource "aws_s3_bucket" "wrong_type" {
+  bucket = "wrong-resource-type"
+}
+
+variable "should_not_be_here" {
+  type = string
+}`,
+			"aws_s3_bucket.tf": `resource "aws_s3_bucket" "data" {
+  bucket = "my-data-bucket"
+}`,
+			"main.tf": `resource "aws_iam_role" "lambda_role" {
+  name = "lambda-execution-role"
+}
+
+resource "aws_s3_bucket" "wrong_place" {
+  bucket = "should-be-in-s3-file"
+}`,
+		},
 	}
 }
