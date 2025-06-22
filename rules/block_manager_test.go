@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_BlockMover_AppendToFile(t *testing.T) {
+func Test_BlockManager_AppendToFile(t *testing.T) {
 	tests := []struct {
 		name            string
 		existingContent string
@@ -30,11 +30,11 @@ func Test_BlockMover_AppendToFile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Use project testdata directory for easy verification
-			testDir := filepath.Join("testdata", "file_mover", t.Name())
+			testDir := filepath.Join("testdata", "block_manager", t.Name())
 			if err := os.MkdirAll(testDir, 0755); err != nil {
 				t.Fatalf("Failed to create test directory: %s", err)
 			}
-			defer os.RemoveAll(filepath.Join("testdata", "file_mover"))
+			defer os.RemoveAll(filepath.Join("testdata", "block_manager"))
 
 			targetFile := filepath.Join(testDir, "variables.tf")
 			
@@ -44,8 +44,8 @@ func Test_BlockMover_AppendToFile(t *testing.T) {
 				}
 			}
 
-			blockMover := &BlockMover{}
-			if err := blockMover.appendToTargetFile(targetFile, test.newContent); err != nil {
+			blockManager := &BlockManager{}
+			if err := blockManager.appendToTargetFile(targetFile, test.newContent); err != nil {
 				t.Fatalf("Failed to append to target file: %s", err)
 			}
 

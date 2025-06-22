@@ -4,6 +4,12 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-west-2"
+}
+
 resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = var.instance_type

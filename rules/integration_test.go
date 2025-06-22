@@ -68,11 +68,11 @@ variable "new" {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testDir := filepath.Join("testdata", "fix_integration", t.Name())
+			testDir := filepath.Join("testdata", "integration", t.Name())
 			if err := os.MkdirAll(testDir, 0755); err != nil {
 				t.Fatalf("Failed to create test directory: %s", err)
 			}
-			defer os.RemoveAll(filepath.Join("testdata", "fix_integration"))
+			defer os.RemoveAll(filepath.Join("testdata", "integration"))
 
 			// Write test files to the testdata directory
 			for filename, content := range test.files {
@@ -117,63 +117,4 @@ variable "new" {
 			}
 		})
 	}
-}
-
-// Test_BlockMover_ManualFileOperations tests the file operations directly
-// This allows developers to see the actual file manipulation behavior
-func Test_BlockMover_ManualFileOperations(t *testing.T) {
-	testDir := filepath.Join("testdata", "manual_operations")
-	if err := os.MkdirAll(testDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
-	defer os.RemoveAll(testDir)
-
-	// Test 1: Create new variables.tf
-	t.Run("create_new_variables_tf", func(t *testing.T) {
-		targetFile := filepath.Join(testDir, "variables.tf")
-		content := `variable "test" {
-  type        = string
-  description = "A test variable"
-}`
-
-		blockMover := &BlockMover{}
-		if err := blockMover.appendToTargetFile(targetFile, content); err != nil {
-			t.Fatalf("Failed to create variables.tf: %s", err)
-		}
-
-		// Verify file was created
-		if _, err := os.Stat(targetFile); os.IsNotExist(err) {
-			t.Fatalf("variables.tf was not created")
-		}
-
-		// Read and verify content
-		actualContent, err := os.ReadFile(targetFile)
-		if err != nil {
-			t.Fatalf("Failed to read variables.tf: %s", err)
-		}
-
-		t.Logf("Created variables.tf with content:\n%s", string(actualContent))
-	})
-
-	// Test 2: Append to existing variables.tf
-	t.Run("append_to_existing_variables_tf", func(t *testing.T) {
-		targetFile := filepath.Join(testDir, "variables.tf")
-		newContent := `
-variable "second" {
-  type = number
-}`
-
-		blockMover := &BlockMover{}
-		if err := blockMover.appendToTargetFile(targetFile, newContent); err != nil {
-			t.Fatalf("Failed to append to variables.tf: %s", err)
-		}
-
-		// Read final content
-		finalContent, err := os.ReadFile(targetFile)
-		if err != nil {
-			t.Fatalf("Failed to read final variables.tf: %s", err)
-		}
-
-		t.Logf("Final variables.tf content:\n%s", string(finalContent))
-	})
 }

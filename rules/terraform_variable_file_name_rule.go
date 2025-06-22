@@ -119,8 +119,8 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 
 		if block.Type == "variable" {
 			if basename != "variables.tf" {
-				blockMover := NewBlockMover(runner)
-				fixFunc := blockMover.CreateFixFunction("variable", block, "variables.tf")
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "variables.tf")
 				
 				if err := runner.EmitIssueWithFix(
 					r,
