@@ -142,11 +142,139 @@ output "instance_id" {
 			expected: helper.Issues{
 				{
 					Rule:    NewTerraformVariableFileNameRule(),
-					Message: "Only variable blocks should be declared in variables.tf, found output block",
+					Message: "Output block should be declared in outputs.tf, not in variables.tf",
 					Range: hcl.Range{
 						Filename: "variables.tf",
 						Start:    hcl.Pos{Line: 2, Column: 1},
 						End:      hcl.Pos{Line: 2, Column: 21},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.example.id
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Output block should be declared in outputs.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 21},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in outputs.tf - valid",
+			files: map[string]string{
+				"outputs.tf": `
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.example.id
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "locals block in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "example"
+  }
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Locals block should be declared in locals.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 7},
+					},
+				},
+			},
+		},
+		{
+			name: "locals block in locals.tf - valid",
+			files: map[string]string{
+				"locals.tf": `
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "example"
+  }
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "variable block in outputs.tf - invalid",
+			files: map[string]string{
+				"outputs.tf": `
+variable "should_not_be_here" {
+  type = string
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in outputs.tf",
+					Range: hcl.Range{
+						Filename: "outputs.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 30},
+					},
+				},
+			},
+		},
+		{
+			name: "resource block in outputs.tf - invalid",
+			files: map[string]string{
+				"outputs.tf": `
+resource "aws_instance" "should_not_be_here" {
+  ami = "ami-12345678"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Only output blocks should be declared in outputs.tf, found resource block",
+					Range: hcl.Range{
+						Filename: "outputs.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 45},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in locals.tf - invalid",
+			files: map[string]string{
+				"locals.tf": `
+output "should_not_be_here" {
+  value = "test"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformVariableFileNameRule(),
+					Message: "Output block should be declared in outputs.tf, not in locals.tf",
+					Range: hcl.Range{
+						Filename: "locals.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 28},
 					},
 				},
 			},

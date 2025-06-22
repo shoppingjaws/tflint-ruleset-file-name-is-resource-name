@@ -19,7 +19,7 @@ func NewTerraformVariableFileNameRule() *TerraformVariableFileNameRule {
 }
 
 func (r *TerraformVariableFileNameRule) Name() string {
-	return "terraform_variable_file_name"
+	return "terraform_block_file_name"
 }
 
 func (r *TerraformVariableFileNameRule) Enabled() bool {
@@ -117,7 +117,8 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 			continue
 		}
 
-		if block.Type == "variable" {
+		switch block.Type {
+		case "variable":
 			if basename != "variables.tf" {
 				blockManager := NewBlockManager(runner)
 				fixFunc := blockManager.CreateFixFunction(block, "variables.tf")
@@ -131,11 +132,56 @@ func (r *TerraformVariableFileNameRule) checkFile(runner tflint.Runner, filename
 					return err
 				}
 			}
-		} else {
+		case "output":
+			if basename != "outputs.tf" {
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "outputs.tf")
+				
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Output block should be declared in outputs.tf, not in %s", basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			}
+		case "locals":
+			if basename != "locals.tf" {
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "locals.tf")
+				
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Locals block should be declared in locals.tf, not in %s", basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			}
+		default:
+			// Check if this file should only contain specific block types
 			if basename == "variables.tf" {
 				if err := runner.EmitIssue(
 					r,
 					fmt.Sprintf("Only variable blocks should be declared in variables.tf, found %s block", block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			} else if basename == "outputs.tf" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only output blocks should be declared in outputs.tf, found %s block", block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			} else if basename == "locals.tf" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only locals blocks should be declared in locals.tf, found %s block", block.Type),
 					blockRange,
 				); err != nil {
 					return err

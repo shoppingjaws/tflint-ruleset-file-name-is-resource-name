@@ -89,25 +89,32 @@ variable "another_var" {
 // GetTestScenarios returns predefined test scenarios
 func GetTestScenarios() map[string]map[string]string {
 	return map[string]map[string]string{
-		"scenario1_variable_in_main": {
+		"scenario1_blocks_in_wrong_files": {
 			"main.tf": `variable "instance_type" {
   description = "EC2 instance type"
   type        = string
   default     = "t2.micro"
 }
 
-variable "region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-west-2"
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.example.id
+}
+
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "example"
+  }
 }
 
 resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = var.instance_type
+  tags          = local.common_tags
 }`,
 		},
-		"scenario2_mixed_blocks_in_variables": {
+		"scenario2_mixed_blocks_in_dedicated_files": {
 			"variables.tf": `variable "valid_var" {
   type = string
 }
@@ -119,13 +126,49 @@ resource "aws_instance" "should_not_be_here" {
 output "should_not_be_here" {
   value = "test"
 }`,
+			"outputs.tf": `output "valid_output" {
+  value = "test"
+}
+
+variable "should_not_be_here" {
+  type = string
+}
+
+locals {
+  should_not_be_here = "test"
+}`,
+			"locals.tf": `locals {
+  valid_local = "test"
+}
+
+output "should_not_be_here" {
+  value = "test"
+}
+
+variable "should_not_be_here" {
+  type = string
+}`,
 		},
-		"scenario3_existing_variables_tf": {
+		"scenario3_existing_files_with_new_blocks": {
 			"variables.tf": `variable "existing" {
   type = string
 }`,
+			"outputs.tf": `output "existing_output" {
+  value = "existing"
+}`,
+			"locals.tf": `locals {
+  existing_local = "existing"
+}`,
 			"main.tf": `variable "new_var" {
   type = number
+}
+
+output "new_output" {
+  value = "new"
+}
+
+locals {
+  new_local = "new"
 }
 
 resource "aws_instance" "example" {

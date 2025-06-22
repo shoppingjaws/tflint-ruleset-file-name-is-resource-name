@@ -46,25 +46,33 @@ demo-file-ops:
 reset-scenarios:
 	./scripts/reset-scenarios.sh
 
-.PHONY: test-scenario1
-test-scenario1:
-	./scripts/test-scenario.sh scenario1_variable_in_main
-
-.PHONY: test-scenario2
-test-scenario2:
-	./scripts/test-scenario.sh scenario2_mixed_blocks_in_variables
-
-.PHONY: test-scenario3
-test-scenario3:
-	./scripts/test-scenario.sh scenario3_existing_variables_tf
+# Dynamic scenario testing - usage: make test-scenario SCENARIO=scenario_name
+.PHONY: test-scenario
+test-scenario:
+	@if [ -z "$(SCENARIO)" ]; then \
+		echo "Usage: make test-scenario SCENARIO=<scenario_name>"; \
+		echo ""; \
+		echo "Available scenarios:"; \
+		if [ -d "rules/testdata/templates" ]; then \
+			for scenario in rules/testdata/templates/*; do \
+				if [ -d "$$scenario" ]; then \
+					echo "  - $$(basename "$$scenario")"; \
+				fi; \
+			done; \
+		fi; \
+		exit 1; \
+	fi
+	./scripts/test-scenario.sh $(SCENARIO)
 
 .PHONY: test-all-scenarios
 test-all-scenarios: reset-scenarios
 	@echo "Testing all scenarios..."
-	@./scripts/test-scenario.sh scenario1_variable_in_main
-	@echo ""
-	@./scripts/test-scenario.sh scenario2_mixed_blocks_in_variables  
-	@echo ""
-	@./scripts/test-scenario.sh scenario3_existing_variables_tf
+	@for scenario in rules/testdata/templates/*; do \
+		if [ -d "$$scenario" ]; then \
+			scenario_name=$$(basename "$$scenario"); \
+			echo ""; \
+			./scripts/test-scenario.sh "$$scenario_name"; \
+		fi; \
+	done
 	@echo ""
 	@echo "All scenarios tested!"
