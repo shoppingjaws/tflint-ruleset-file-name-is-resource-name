@@ -13,12 +13,18 @@ import (
 
 // BlockManager handles block extraction, movement, and deletion operations
 type BlockManager struct {
-	runner tflint.Runner
+	runner     tflint.Runner
+	workingDir string // Optional working directory for test scenarios
 }
 
 // NewBlockManager creates a new BlockManager instance
 func NewBlockManager(runner tflint.Runner) *BlockManager {
 	return &BlockManager{runner: runner}
+}
+
+// NewBlockManagerWithWorkingDir creates a new BlockManager instance with working directory
+func NewBlockManagerWithWorkingDir(runner tflint.Runner, workingDir string) *BlockManager {
+	return &BlockManager{runner: runner, workingDir: workingDir}
 }
 
 // MoveBlock moves a block from its current location to a target file
@@ -30,8 +36,15 @@ func (bm *BlockManager) MoveBlock(block *hclext.Block, targetFileName string) er
 	}
 
 	// Determine target file path
-	sourceDir := filepath.Dir(block.DefRange.Filename)
-	targetFile := filepath.Join(sourceDir, targetFileName)
+	var targetFile string
+	if bm.workingDir != "" {
+		// Use working directory for test scenarios
+		targetFile = filepath.Join(bm.workingDir, targetFileName)
+	} else {
+		// Use source directory for normal operations
+		sourceDir := filepath.Dir(block.DefRange.Filename)
+		targetFile = filepath.Join(sourceDir, targetFileName)
+	}
 
 	// Append to target file
 	if err := bm.appendToTargetFile(targetFile, blockContent); err != nil {
@@ -189,8 +202,15 @@ func (bm *BlockManager) CreateFixFunction(block *hclext.Block, targetFileName st
 		}
 
 		// Determine target file path
-		sourceDir := filepath.Dir(block.DefRange.Filename)
-		targetFile := filepath.Join(sourceDir, targetFileName)
+		var targetFile string
+		if bm.workingDir != "" {
+			// Use working directory for test scenarios
+			targetFile = filepath.Join(bm.workingDir, targetFileName)
+		} else {
+			// Use source directory for normal operations
+			sourceDir := filepath.Dir(block.DefRange.Filename)
+			targetFile = filepath.Join(sourceDir, targetFileName)
+		}
 
 		// Append to target file
 		if err := bm.appendToTargetFile(targetFile, blockContent); err != nil {

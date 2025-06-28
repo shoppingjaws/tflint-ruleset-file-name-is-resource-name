@@ -72,7 +72,21 @@ variable "new" {
 			if err := os.MkdirAll(testDir, 0755); err != nil {
 				t.Fatalf("Failed to create test directory: %s", err)
 			}
-			defer os.RemoveAll(filepath.Join("testdata", "integration"))
+			
+			// Only clean up if KEEP_TEST_FILES is not set
+			if os.Getenv("KEEP_TEST_FILES") == "" {
+				defer os.RemoveAll(filepath.Join("testdata", "integration"))
+				// Also clean up any files created in the rules directory by the fix functions
+				defer func() {
+					// Remove any .tf files created in the rules directory during testing
+					files := []string{"variables.tf", "outputs.tf", "locals.tf", "aws_instance.tf", "aws_s3_bucket.tf", "aws_iam_role.tf"}
+					for _, file := range files {
+						os.Remove(file)
+					}
+				}()
+			} else {
+				t.Logf("Test files preserved in: %s", testDir)
+			}
 
 			// Write test files to the testdata directory
 			for filename, content := range test.files {

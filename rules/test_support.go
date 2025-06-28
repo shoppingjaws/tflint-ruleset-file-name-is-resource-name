@@ -51,7 +51,7 @@ func CreateDemoFiles(t *testing.T, demoDir string) {
   default     = "demo"
 }`
 
-		blockManager := &BlockManager{}
+		blockManager := NewBlockManagerWithWorkingDir(nil, demoDir)
 		if err := blockManager.appendToTargetFile(targetFile, content); err != nil {
 			t.Fatalf("Failed to create variables.tf: %s", err)
 		}
@@ -69,7 +69,7 @@ variable "another_var" {
   default = 42
 }`
 
-		blockManager := &BlockManager{}
+		blockManager := NewBlockManagerWithWorkingDir(nil, demoDir)
 		if err := blockManager.appendToTargetFile(targetFile, additionalContent); err != nil {
 			t.Fatalf("Failed to append to variables.tf: %s", err)
 		}

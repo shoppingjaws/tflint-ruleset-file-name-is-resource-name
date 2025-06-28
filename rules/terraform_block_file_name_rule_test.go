@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -8,6 +9,13 @@ import (
 )
 
 func Test_TerraformBlockFileNameRule(t *testing.T) {
+	// Clean up any .tf files created in the rules directory during testing
+	defer func() {
+		files := []string{"variables.tf", "outputs.tf", "locals.tf", "aws_instance.tf", "aws_s3_bucket.tf", "aws_iam_role.tf"}
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}()
 	tests := []struct {
 		name     string
 		files    map[string]string

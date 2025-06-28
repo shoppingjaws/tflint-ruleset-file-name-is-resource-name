@@ -34,7 +34,13 @@ func Test_BlockManager_AppendToFile(t *testing.T) {
 			if err := os.MkdirAll(testDir, 0755); err != nil {
 				t.Fatalf("Failed to create test directory: %s", err)
 			}
-			defer os.RemoveAll(filepath.Join("testdata", "block_manager"))
+			
+			// Only clean up if KEEP_TEST_FILES is not set
+			if os.Getenv("KEEP_TEST_FILES") == "" {
+				defer os.RemoveAll(filepath.Join("testdata", "block_manager"))
+			} else {
+				t.Logf("Test files preserved in: %s", testDir)
+			}
 
 			targetFile := filepath.Join(testDir, "variables.tf")
 
@@ -44,7 +50,7 @@ func Test_BlockManager_AppendToFile(t *testing.T) {
 				}
 			}
 
-			blockManager := &BlockManager{}
+			blockManager := NewBlockManagerWithWorkingDir(nil, testDir)
 			if err := blockManager.appendToTargetFile(targetFile, test.newContent); err != nil {
 				t.Fatalf("Failed to append to target file: %s", err)
 			}
