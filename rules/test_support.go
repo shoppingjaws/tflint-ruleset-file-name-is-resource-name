@@ -32,59 +32,6 @@ func CreateTestFiles(t *testing.T, baseDir string, scenarios map[string]map[stri
 	}
 }
 
-// CreateDemoFiles creates demo files for testing block operations
-func CreateDemoFiles(t *testing.T, demoDir string) {
-	if err := os.MkdirAll(demoDir, 0755); err != nil {
-		t.Fatalf("Failed to create demo directory: %s", err)
-	}
-
-	// Demo 1: Create variables.tf from scratch
-	t.Run("demo_create_variables_tf", func(t *testing.T) {
-		targetFile := filepath.Join(demoDir, "variables.tf")
-
-		// Remove if exists
-		os.Remove(targetFile)
-
-		content := `variable "demo_var" {
-  description = "A demo variable"
-  type        = string
-  default     = "demo"
-}`
-
-		blockManager := NewBlockManagerWithWorkingDir(nil, demoDir)
-		if err := blockManager.appendToTargetFile(targetFile, content); err != nil {
-			t.Fatalf("Failed to create variables.tf: %s", err)
-		}
-
-		t.Logf("Created %s", targetFile)
-	})
-
-	// Demo 2: Append to existing variables.tf
-	t.Run("demo_append_to_variables_tf", func(t *testing.T) {
-		targetFile := filepath.Join(demoDir, "variables.tf")
-
-		additionalContent := `
-variable "another_var" {
-  type = number
-  default = 42
-}`
-
-		blockManager := NewBlockManagerWithWorkingDir(nil, demoDir)
-		if err := blockManager.appendToTargetFile(targetFile, additionalContent); err != nil {
-			t.Fatalf("Failed to append to variables.tf: %s", err)
-		}
-
-		// Read and display final content
-		finalContent, err := os.ReadFile(targetFile)
-		if err != nil {
-			t.Fatalf("Failed to read final content: %s", err)
-		}
-
-		t.Logf("Final content of %s:\n%s", targetFile, string(finalContent))
-	})
-
-	t.Logf("Demo files created in %s", demoDir)
-}
 
 // GetTestScenarios returns predefined test scenarios
 func GetTestScenarios() map[string]map[string]string {

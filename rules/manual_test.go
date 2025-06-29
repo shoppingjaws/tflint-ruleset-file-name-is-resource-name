@@ -26,8 +26,3 @@ func Test_Manual_CreateTestFiles(t *testing.T) {
 	t.Log("4. make reset-scenarios  # to reset for next test")
 }
 
-// Test_Manual_FileOperationsDemo demonstrates the block manager functionality
-func Test_Manual_FileOperationsDemo(t *testing.T) {
-	demoDir := "testdata/demo"
-	CreateDemoFiles(t, demoDir)
-}
