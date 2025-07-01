@@ -66,6 +66,37 @@ resource "aws_instance" "example" {
   tags = local.common_tags
 }
 
+# Data sources with custom prefix (datasource_)
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Ephemeral resources with custom prefix (temp_)
+ephemeral "aws_ephemeral_instance" "temp_compute" {
+  instance_type = "t2.micro"
+  duration      = "1h"
+  
+  lifecycle {
+    cleanup_on_destroy = true
+  }
+}
+
+ephemeral "aws_ephemeral_storage" "temp_storage" {
+  size     = "10GB"
+  type     = "gp3"
+  duration = "2h"
+}
+
 resource "aws_security_group" "example" {
   name_prefix = "example-"
   vpc_id      = module.vpc.vpc_id

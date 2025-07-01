@@ -121,13 +121,6 @@ test-scenario1:
 test-scenario2:
 	make test-scenario SCENARIO=scenario2_custom_file_names
 
-.PHONY: test-scenario3
-test-scenario3:
-	make test-scenario SCENARIO=scenario3_data_resources
-
-.PHONY: test-scenario4
-test-scenario4:
-	make test-scenario SCENARIO=scenario4_ephemeral_resources
 
 # =============================================================================
 # Development Utilities
@@ -182,8 +175,6 @@ help:
 	@echo "Quick Testing:"
 	@echo "  test-scenario1     Test scenario1_blocks_in_wrong_files"
 	@echo "  test-scenario2     Test scenario2_custom_file_names"
-	@echo "  test-scenario3     Test scenario3_data_resources"
-	@echo "  test-scenario4     Test scenario4_ephemeral_resources"
 	@echo ""
 	@echo "Available scenarios:"
 	@if [ -d "rules/testdata/templates" ]; then \
