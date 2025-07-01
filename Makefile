@@ -104,6 +104,11 @@ test-scenarios: reset-scenarios
 	@echo ""
 	@echo "All scenario tests passed!"
 
+.PHONY: validate-test-system
+validate-test-system:
+	@echo "Validating that the test system correctly detects failures..."
+	./scripts/validate-test-system.sh
+
 # =============================================================================
 # Quick Testing Shortcuts
 # =============================================================================
@@ -171,6 +176,7 @@ help:
 	@echo "  test-scenario      Test specific scenario (requires SCENARIO=name)"
 	@echo "  test-all-scenarios Test all available scenarios"
 	@echo "  test-scenarios     Test all scenarios and compare with expected results"
+	@echo "  validate-test-system Validate that test system correctly detects failures"
 	@echo "  clean-testdata     Clean test data directories"
 	@echo ""
 	@echo "Quick Testing:"
