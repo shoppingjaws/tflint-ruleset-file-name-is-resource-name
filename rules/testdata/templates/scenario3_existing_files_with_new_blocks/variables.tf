@@ -1,3 +1,0 @@
-variable "existing" {
-  type = string
-}
