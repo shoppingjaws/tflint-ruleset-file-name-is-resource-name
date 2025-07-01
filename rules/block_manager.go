@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 )
@@ -217,18 +218,9 @@ func (bm *BlockManager) CreateFixFunction(block *hclext.Block, targetFileName st
 			return fmt.Errorf("failed to append to target file: %w", err)
 		}
 
-		// For real file systems, we need to handle block removal differently
-		// TFLint's ReplaceText has limitations, so we use file system operations
-		if bm.isRealFileSystem(block.DefRange.Filename) {
-			if err := bm.removeBlockFromRealFile(block); err != nil {
-				return fmt.Errorf("failed to remove block from source file: %w", err)
-			}
-		} else {
-			// For test scenarios, attempt TFLint's ReplaceText (may have limitations)
-			if err := f.ReplaceText(block.DefRange, ""); err != nil {
-				// If TFLint replacement fails, it's okay for test scenarios
-				// The important part is that the block was successfully moved to target file
-			}
+		// Remove block from source file
+		if err := bm.RemoveBlockFromFile(block); err != nil {
+			return fmt.Errorf("failed to remove block from source file: %w", err)
 		}
 
 		return nil
@@ -314,15 +306,46 @@ func (bm *BlockManager) findBlockLines(lines []string, block *hclext.Block) (int
 	startPos := block.DefRange.Start
 	startLine := startPos.Line - 1 // 0-based indexing
 
-	// Find the end line by counting braces
+	// Find the end line by counting braces with proper string handling
 	braceCount := 0
 	blockEndLine := startLine
 	foundStart := false
+	inString := false
+	inComment := false
 
 	for lineNum := startLine; lineNum < len(lines); lineNum++ {
 		line := lines[lineNum]
 
-		for _, char := range line {
+		for i, char := range line {
+			// Handle string literals to avoid counting braces within strings
+			if char == '"' && !inComment {
+				// Check if it's escaped
+				escaped := false
+				if i > 0 && line[i-1] == '\\' {
+					// Count consecutive backslashes
+					backslashCount := 0
+					for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
+						backslashCount++
+					}
+					escaped = (backslashCount%2 == 1)
+				}
+				if !escaped {
+					inString = !inString
+				}
+				continue
+			}
+
+			// Handle single-line comments
+			if !inString && i < len(line)-1 && line[i] == '/' && line[i+1] == '/' {
+				inComment = true
+				break // Skip rest of line
+			}
+
+			// Skip processing if we're in a string or comment
+			if inString || inComment {
+				continue
+			}
+
 			if char == '{' {
 				foundStart = true
 				braceCount++
@@ -334,6 +357,9 @@ func (bm *BlockManager) findBlockLines(lines []string, block *hclext.Block) (int
 				}
 			}
 		}
+
+		// Reset comment flag at end of line
+		inComment = false
 	}
 
 	if !foundStart || braceCount != 0 {
@@ -486,4 +512,108 @@ func (bm *BlockManager) cleanupEmptyBlocksInFile(filename, blockType string) err
 func removeEmptyBlockPattern(content, pattern string) string {
 	re := regexp.MustCompile(pattern)
 	return re.ReplaceAllString(content, "")
+}
+
+// calculateFullBlockRange calculates the complete range of a block including its body
+func (bm *BlockManager) calculateFullBlockRange(block *hclext.Block) (hcl.Range, error) {
+	files, err := bm.runner.GetFiles()
+	if err != nil {
+		return hcl.Range{}, fmt.Errorf("failed to get files: %w", err)
+	}
+
+	sourceFile, exists := files[block.DefRange.Filename]
+	if !exists {
+		return hcl.Range{}, fmt.Errorf("source file not found: %s", block.DefRange.Filename)
+	}
+
+	content := string(sourceFile.Bytes)
+	lines := strings.Split(content, "\n")
+
+	// Use DefRange for precise extraction
+	startLine := block.DefRange.Start.Line - 1 // Convert to 0-based
+	if startLine >= len(lines) {
+		return hcl.Range{}, fmt.Errorf("start line %d is beyond file length %d", startLine+1, len(lines))
+	}
+
+	// Find the end of the block by counting braces with proper string handling
+	braceCount := 0
+	foundStart := false
+	endLine := startLine
+	inString := false
+	inComment := false
+
+	for lineNum := startLine; lineNum < len(lines); lineNum++ {
+		line := lines[lineNum]
+
+		for i, char := range line {
+			// Handle string literals to avoid counting braces within strings
+			if char == '"' && !inComment {
+				// Check if it's escaped
+				escaped := false
+				if i > 0 && line[i-1] == '\\' {
+					// Count consecutive backslashes
+					backslashCount := 0
+					for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
+						backslashCount++
+					}
+					escaped = (backslashCount%2 == 1)
+				}
+				if !escaped {
+					inString = !inString
+				}
+				continue
+			}
+
+			// Handle single-line comments
+			if !inString && i < len(lines)-1 && line[i] == '/' && line[i+1] == '/' {
+				inComment = true
+				break // Skip rest of line
+			}
+
+			// Skip processing if we're in a string or comment
+			if inString || inComment {
+				continue
+			}
+
+			if char == '{' {
+				foundStart = true
+				braceCount++
+			} else if char == '}' && foundStart {
+				braceCount--
+				if braceCount == 0 {
+					endLine = lineNum
+					break
+				}
+			}
+		}
+
+		// Reset comment flag at end of line
+		inComment = false
+
+		// If we found the end of the block, break out of the outer loop
+		if foundStart && braceCount == 0 {
+			break
+		}
+	}
+
+	if !foundStart || braceCount != 0 {
+		return hcl.Range{}, fmt.Errorf("could not find matching braces for block at line %d", startLine+1)
+	}
+
+	// Find the end of the closing brace line
+	endOffset := bm.calculateOffset(sourceFile.Bytes, endLine+1, 1) // Start of next line
+	if endLine+1 >= len(lines) {
+		// If this is the last line, include the entire content
+		endOffset = len(sourceFile.Bytes)
+	}
+
+	return hcl.Range{
+		Filename: block.DefRange.Filename,
+		Start: block.DefRange.Start,
+		End: hcl.Pos{
+			Line:   endLine + 1, // Convert back to 1-based
+			Column: len(lines[endLine]) + 1,
+			Byte:   endOffset,
+		},
+	}, nil
 }

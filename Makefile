@@ -79,6 +79,31 @@ test-all-scenarios: reset-scenarios
 	@echo ""
 	@echo "All scenarios tested!"
 
+.PHONY: test-scenarios
+test-scenarios: reset-scenarios
+	@echo "Running scenario tests and comparing with expected results..."
+	@for scenario in rules/testdata/templates/*; do \
+		if [ -d "$$scenario" ]; then \
+			scenario_name=$$(basename "$$scenario"); \
+			echo "Testing scenario: $$scenario_name"; \
+			./scripts/test-scenario.sh "$$scenario_name"; \
+			if [ -d "rules/testdata/answer/$$scenario_name" ]; then \
+				echo "Comparing results for $$scenario_name..."; \
+				if diff -r "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" > /dev/null 2>&1; then \
+					echo "✓ $$scenario_name passed"; \
+				else \
+					echo "✗ $$scenario_name failed - differences found:"; \
+					diff -r "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name"; \
+					exit 1; \
+				fi; \
+			else \
+				echo "⚠ No answer directory found for $$scenario_name"; \
+			fi; \
+		fi; \
+	done
+	@echo ""
+	@echo "All scenario tests passed!"
+
 # =============================================================================
 # Quick Testing Shortcuts
 # =============================================================================
@@ -145,6 +170,7 @@ help:
 	@echo "  reset-scenarios    Reset test scenarios to initial state"
 	@echo "  test-scenario      Test specific scenario (requires SCENARIO=name)"
 	@echo "  test-all-scenarios Test all available scenarios"
+	@echo "  test-scenarios     Test all scenarios and compare with expected results"
 	@echo "  clean-testdata     Clean test data directories"
 	@echo ""
 	@echo "Quick Testing:"
