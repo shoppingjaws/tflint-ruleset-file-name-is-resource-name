@@ -86,7 +86,7 @@ test-scenarios: reset-scenarios
 		if [ -d "$$scenario" ]; then \
 			scenario_name=$$(basename "$$scenario"); \
 			echo "Testing scenario: $$scenario_name"; \
-			./scripts/test-scenario.sh "$$scenario_name"; \
+			SKIP_RESET=1 ./scripts/test-scenario.sh "$$scenario_name"; \
 			if [ -d "rules/testdata/answer/$$scenario_name" ]; then \
 				echo "Comparing results for $$scenario_name..."; \
 				if diff -r "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" > /dev/null 2>&1; then \
@@ -119,7 +119,7 @@ test-scenario1:
 
 .PHONY: test-scenario2
 test-scenario2:
-	make test-scenario SCENARIO=scenario2_mixed_blocks_in_dedicated_files
+	make test-scenario SCENARIO=scenario2_custom_file_names
 
 .PHONY: test-scenario3
 test-scenario3:
@@ -181,7 +181,7 @@ help:
 	@echo ""
 	@echo "Quick Testing:"
 	@echo "  test-scenario1     Test scenario1_blocks_in_wrong_files"
-	@echo "  test-scenario2     Test scenario2_mixed_blocks_in_dedicated_files"
+	@echo "  test-scenario2     Test scenario2_custom_file_names"
 	@echo "  test-scenario3     Test scenario3_existing_files_with_new_blocks"
 	@echo "  test-scenario4     Test scenario4_resource_specific_files"
 	@echo ""

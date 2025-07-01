@@ -24,9 +24,11 @@ fi
 SCENARIO_NAME="$1"
 SCENARIO_DIR="$WORKING_DIR/$SCENARIO_NAME"
 
-# Reset scenarios first
-echo "Resetting scenarios..."
-"$SCRIPT_DIR/reset-scenarios.sh"
+# Reset scenarios first (unless SKIP_RESET is set)
+if [ -z "$SKIP_RESET" ]; then
+    echo "Resetting scenarios..."
+    "$SCRIPT_DIR/reset-scenarios.sh"
+fi
 
 # Check if scenario exists
 if [ ! -d "$SCENARIO_DIR" ]; then
