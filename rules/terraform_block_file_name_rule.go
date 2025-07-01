@@ -259,6 +259,36 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					}
 				}
 			}
+		} else if basename == "terraform.tf" {
+			if block.Type != "terraform" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only terraform blocks should be declared in terraform.tf, found %s block", block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else if basename == "provider.tf" {
+			if block.Type != "provider" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only provider blocks should be declared in provider.tf, found %s block", block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else if basename == "module.tf" {
+			if block.Type != "module" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only module blocks should be declared in module.tf, found %s block", block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
 		} else {
 			// Handle non-special files
 			switch block.Type {
@@ -316,6 +346,42 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 							return err
 						}
 					}
+				}
+			case "terraform":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "terraform.tf")
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Terraform block should be declared in terraform.tf, not in %s", basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			case "provider":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "provider.tf")
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Provider block should be declared in provider.tf, not in %s", basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			case "module":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, "module.tf")
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Module block should be declared in module.tf, not in %s", basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
 				}
 			}
 
