@@ -123,7 +123,7 @@ test-scenario2:
 
 .PHONY: test-scenario3
 test-scenario3:
-	make test-scenario SCENARIO=scenario3_existing_files_with_new_blocks
+	make test-scenario SCENARIO=scenario3_data_resources
 
 .PHONY: test-scenario4
 test-scenario4:
@@ -182,7 +182,7 @@ help:
 	@echo "Quick Testing:"
 	@echo "  test-scenario1     Test scenario1_blocks_in_wrong_files"
 	@echo "  test-scenario2     Test scenario2_custom_file_names"
-	@echo "  test-scenario3     Test scenario3_existing_files_with_new_blocks"
+	@echo "  test-scenario3     Test scenario3_data_resources"
 	@echo "  test-scenario4     Test scenario4_resource_specific_files"
 	@echo ""
 	@echo "Available scenarios:"

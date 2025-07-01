@@ -15,12 +15,13 @@ type TerraformBlockFileNameRule struct {
 }
 
 type TerraformBlockFileNameRuleConfig struct {
-	VariableFile  string `hclext:"variable_file"`
-	OutputFile    string `hclext:"output_file"`
-	LocalsFile    string `hclext:"locals_file"`
-	TerraformFile string `hclext:"terraform_file"`
-	ProviderFile  string `hclext:"provider_file"`
-	ModuleFile    string `hclext:"module_file"`
+	VariableFile  string `hclext:"variable_file,optional"`
+	OutputFile    string `hclext:"output_file,optional"`
+	LocalsFile    string `hclext:"locals_file,optional"`
+	TerraformFile string `hclext:"terraform_file,optional"`
+	ProviderFile  string `hclext:"provider_file,optional"`
+	ModuleFile    string `hclext:"module_file,optional"`
+	DataPrefix    string `hclext:"data_prefix,optional"`
 }
 
 func NewTerraformBlockFileNameRule() *TerraformBlockFileNameRule {
@@ -76,6 +77,9 @@ func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
 	}
 	if config.ModuleFile == "" {
 		config.ModuleFile = "module.tf"
+	}
+	if config.DataPrefix == "" {
+		config.DataPrefix = "data_"
 	}
 
 	files, err := runner.GetFiles()
@@ -190,6 +194,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					); err != nil {
 						return err
 					}
+				} else if block.Type == "data" && len(block.Labels) >= 1 {
+					dataType := block.Labels[0]
+					expectedFilename := config.DataPrefix + dataType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Data block '%s' should be declared in %s, not in %s", dataType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
 				} else {
 					if err := runner.EmitIssue(
 						r,
@@ -237,6 +254,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					); err != nil {
 						return err
 					}
+				} else if block.Type == "data" && len(block.Labels) >= 1 {
+					dataType := block.Labels[0]
+					expectedFilename := config.DataPrefix + dataType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Data block '%s' should be declared in %s, not in %s", dataType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
 				} else {
 					if err := runner.EmitIssue(
 						r,
@@ -279,6 +309,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					if err := runner.EmitIssueWithFix(
 						r,
 						fmt.Sprintf("Resource block '%s' should be declared in %s, not in %s", resourceType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "data" && len(block.Labels) >= 1 {
+					dataType := block.Labels[0]
+					expectedFilename := config.DataPrefix + dataType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Data block '%s' should be declared in %s, not in %s", dataType, expectedFilename, basename),
 						blockRange,
 						fixFunc,
 					); err != nil {
@@ -382,6 +425,25 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 						}
 					}
 				}
+			case "data":
+				if len(block.Labels) >= 1 {
+					dataType := block.Labels[0]
+					expectedFilename := config.DataPrefix + dataType + ".tf"
+
+					if basename != expectedFilename {
+						blockManager := NewBlockManager(runner)
+						fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+
+						if err := runner.EmitIssueWithFix(
+							r,
+							fmt.Sprintf("Data block '%s' should be declared in %s, not in %s", dataType, expectedFilename, basename),
+							blockRange,
+							fixFunc,
+						); err != nil {
+							return err
+						}
+					}
+				}
 			case "terraform":
 				blockManager := NewBlockManager(runner)
 				fixFunc := blockManager.CreateFixFunction(block, config.TerraformFile)
@@ -421,7 +483,7 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 			}
 
 			// Check if this is a resource-specific file that contains non-matching blocks
-			if r.isResourceFile(basename) {
+			if r.isResourceFile(basename, config.DataPrefix) {
 				expectedResourceType := strings.TrimSuffix(basename, ".tf")
 				if block.Type == "resource" {
 					if len(block.Labels) >= 1 && block.Labels[0] != expectedResourceType {
@@ -443,16 +505,50 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					}
 				}
 			}
+
+			// Check if this is a data-specific file that contains non-matching blocks
+			if r.isDataFile(basename, config.DataPrefix) {
+				expectedDataType := strings.TrimPrefix(strings.TrimSuffix(basename, ".tf"), config.DataPrefix)
+				if block.Type == "data" {
+					if len(block.Labels) >= 1 && block.Labels[0] != expectedDataType {
+						if err := runner.EmitIssue(
+							r,
+							fmt.Sprintf("Only '%s' data blocks should be declared in %s, found '%s' data block", expectedDataType, basename, block.Labels[0]),
+							blockRange,
+						); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := runner.EmitIssue(
+						r,
+						fmt.Sprintf("Only '%s' data blocks should be declared in %s, found %s block", expectedDataType, basename, block.Type),
+						blockRange,
+					); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 
 	return nil
 }
 
+// isDataFile determines if a filename follows the data naming pattern with given prefix
+func (r *TerraformBlockFileNameRule) isDataFile(basename string, dataPrefix string) bool {
+	if !strings.HasSuffix(basename, ".tf") {
+		return false
+	}
+
+	filename := strings.TrimSuffix(basename, ".tf")
+	return strings.HasPrefix(filename, dataPrefix) && strings.Contains(filename, "_")
+}
+
 // isResourceFile determines if a filename follows the resource naming pattern
 // Resource files should be named like "aws_instance.tf", "azurerm_virtual_machine.tf", etc.
 // This is different from special files like "variables.tf", "outputs.tf", "locals.tf", "main.tf"
-func (r *TerraformBlockFileNameRule) isResourceFile(basename string) bool {
+func (r *TerraformBlockFileNameRule) isResourceFile(basename string, dataPrefix string) bool {
 	if !strings.HasSuffix(basename, ".tf") {
 		return false
 	}
@@ -465,6 +561,11 @@ func (r *TerraformBlockFileNameRule) isResourceFile(basename string) bool {
 		if filename == special {
 			return false
 		}
+	}
+
+	// Exclude data files (they have different naming pattern)
+	if strings.HasPrefix(filename, dataPrefix) {
+		return false
 	}
 
 	// Check if it contains underscores (indicating resource type pattern like aws_instance, azurerm_vm)
