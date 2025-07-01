@@ -127,7 +127,7 @@ test-scenario3:
 
 .PHONY: test-scenario4
 test-scenario4:
-	make test-scenario SCENARIO=scenario4_resource_specific_files
+	make test-scenario SCENARIO=scenario4_ephemeral_resources
 
 # =============================================================================
 # Development Utilities
@@ -183,7 +183,7 @@ help:
 	@echo "  test-scenario1     Test scenario1_blocks_in_wrong_files"
 	@echo "  test-scenario2     Test scenario2_custom_file_names"
 	@echo "  test-scenario3     Test scenario3_data_resources"
-	@echo "  test-scenario4     Test scenario4_resource_specific_files"
+	@echo "  test-scenario4     Test scenario4_ephemeral_resources"
 	@echo ""
 	@echo "Available scenarios:"
 	@if [ -d "rules/testdata/templates" ]; then \

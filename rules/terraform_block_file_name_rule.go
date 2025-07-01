@@ -15,13 +15,14 @@ type TerraformBlockFileNameRule struct {
 }
 
 type TerraformBlockFileNameRuleConfig struct {
-	VariableFile  string `hclext:"variable_file,optional"`
-	OutputFile    string `hclext:"output_file,optional"`
-	LocalsFile    string `hclext:"locals_file,optional"`
-	TerraformFile string `hclext:"terraform_file,optional"`
-	ProviderFile  string `hclext:"provider_file,optional"`
-	ModuleFile    string `hclext:"module_file,optional"`
-	DataPrefix    string `hclext:"data_prefix,optional"`
+	VariableFile    string `hclext:"variable_file,optional"`
+	OutputFile      string `hclext:"output_file,optional"`
+	LocalsFile      string `hclext:"locals_file,optional"`
+	TerraformFile   string `hclext:"terraform_file,optional"`
+	ProviderFile    string `hclext:"provider_file,optional"`
+	ModuleFile      string `hclext:"module_file,optional"`
+	DataPrefix      string `hclext:"data_prefix,optional"`
+	EphemeralPrefix string `hclext:"ephemeral_prefix,optional"`
 }
 
 func NewTerraformBlockFileNameRule() *TerraformBlockFileNameRule {
@@ -81,6 +82,9 @@ func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
 	if config.DataPrefix == "" {
 		config.DataPrefix = "data_"
 	}
+	if config.EphemeralPrefix == "" {
+		config.EphemeralPrefix = "ephemeral_"
+	}
 
 	files, err := runner.GetFiles()
 	if err != nil {
@@ -117,6 +121,11 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 			},
 			{
 				Type:       "data",
+				LabelNames: []string{"type", "name"},
+				Body:       &hclext.BodySchema{},
+			},
+			{
+				Type:       "ephemeral",
 				LabelNames: []string{"type", "name"},
 				Body:       &hclext.BodySchema{},
 			},
@@ -207,6 +216,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					); err != nil {
 						return err
 					}
+				} else if block.Type == "ephemeral" && len(block.Labels) >= 1 {
+					ephemeralType := block.Labels[0]
+					expectedFilename := config.EphemeralPrefix + ephemeralType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Ephemeral block '%s' should be declared in %s, not in %s", ephemeralType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
 				} else {
 					if err := runner.EmitIssue(
 						r,
@@ -267,6 +289,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					); err != nil {
 						return err
 					}
+				} else if block.Type == "ephemeral" && len(block.Labels) >= 1 {
+					ephemeralType := block.Labels[0]
+					expectedFilename := config.EphemeralPrefix + ephemeralType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Ephemeral block '%s' should be declared in %s, not in %s", ephemeralType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
 				} else {
 					if err := runner.EmitIssue(
 						r,
@@ -322,6 +357,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					if err := runner.EmitIssueWithFix(
 						r,
 						fmt.Sprintf("Data block '%s' should be declared in %s, not in %s", dataType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "ephemeral" && len(block.Labels) >= 1 {
+					ephemeralType := block.Labels[0]
+					expectedFilename := config.EphemeralPrefix + ephemeralType + ".tf"
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Ephemeral block '%s' should be declared in %s, not in %s", ephemeralType, expectedFilename, basename),
 						blockRange,
 						fixFunc,
 					); err != nil {
@@ -444,6 +492,25 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 						}
 					}
 				}
+			case "ephemeral":
+				if len(block.Labels) >= 1 {
+					ephemeralType := block.Labels[0]
+					expectedFilename := config.EphemeralPrefix + ephemeralType + ".tf"
+
+					if basename != expectedFilename {
+						blockManager := NewBlockManager(runner)
+						fixFunc := blockManager.CreateFixFunction(block, expectedFilename)
+
+						if err := runner.EmitIssueWithFix(
+							r,
+							fmt.Sprintf("Ephemeral block '%s' should be declared in %s, not in %s", ephemeralType, expectedFilename, basename),
+							blockRange,
+							fixFunc,
+						); err != nil {
+							return err
+						}
+					}
+				}
 			case "terraform":
 				blockManager := NewBlockManager(runner)
 				fixFunc := blockManager.CreateFixFunction(block, config.TerraformFile)
@@ -483,7 +550,7 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 			}
 
 			// Check if this is a resource-specific file that contains non-matching blocks
-			if r.isResourceFile(basename, config.DataPrefix) {
+			if r.isResourceFile(basename, config.DataPrefix, config.EphemeralPrefix) {
 				expectedResourceType := strings.TrimSuffix(basename, ".tf")
 				if block.Type == "resource" {
 					if len(block.Labels) >= 1 && block.Labels[0] != expectedResourceType {
@@ -529,6 +596,30 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					}
 				}
 			}
+
+			// Check if this is an ephemeral-specific file that contains non-matching blocks
+			if r.isEphemeralFile(basename, config.EphemeralPrefix) {
+				expectedEphemeralType := strings.TrimPrefix(strings.TrimSuffix(basename, ".tf"), config.EphemeralPrefix)
+				if block.Type == "ephemeral" {
+					if len(block.Labels) >= 1 && block.Labels[0] != expectedEphemeralType {
+						if err := runner.EmitIssue(
+							r,
+							fmt.Sprintf("Only '%s' ephemeral blocks should be declared in %s, found '%s' ephemeral block", expectedEphemeralType, basename, block.Labels[0]),
+							blockRange,
+						); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err := runner.EmitIssue(
+						r,
+						fmt.Sprintf("Only '%s' ephemeral blocks should be declared in %s, found %s block", expectedEphemeralType, basename, block.Type),
+						blockRange,
+					); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 
@@ -545,10 +636,20 @@ func (r *TerraformBlockFileNameRule) isDataFile(basename string, dataPrefix stri
 	return strings.HasPrefix(filename, dataPrefix) && strings.Contains(filename, "_")
 }
 
+// isEphemeralFile determines if a filename follows the ephemeral naming pattern with given prefix
+func (r *TerraformBlockFileNameRule) isEphemeralFile(basename string, ephemeralPrefix string) bool {
+	if !strings.HasSuffix(basename, ".tf") {
+		return false
+	}
+
+	filename := strings.TrimSuffix(basename, ".tf")
+	return strings.HasPrefix(filename, ephemeralPrefix) && strings.Contains(filename, "_")
+}
+
 // isResourceFile determines if a filename follows the resource naming pattern
 // Resource files should be named like "aws_instance.tf", "azurerm_virtual_machine.tf", etc.
 // This is different from special files like "variables.tf", "outputs.tf", "locals.tf", "main.tf"
-func (r *TerraformBlockFileNameRule) isResourceFile(basename string, dataPrefix string) bool {
+func (r *TerraformBlockFileNameRule) isResourceFile(basename string, dataPrefix string, ephemeralPrefix string) bool {
 	if !strings.HasSuffix(basename, ".tf") {
 		return false
 	}
@@ -565,6 +666,11 @@ func (r *TerraformBlockFileNameRule) isResourceFile(basename string, dataPrefix 
 
 	// Exclude data files (they have different naming pattern)
 	if strings.HasPrefix(filename, dataPrefix) {
+		return false
+	}
+
+	// Exclude ephemeral files (they have different naming pattern)
+	if strings.HasPrefix(filename, ephemeralPrefix) {
 		return false
 	}
 
