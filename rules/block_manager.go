@@ -155,39 +155,45 @@ func (bm *BlockManager) RemoveBlockFromFile(block *hclext.Block) error {
 		return fmt.Errorf("failed to read source file: %w", err)
 	}
 
-	lines := strings.Split(string(content), "\n")
-
-	// Check if the block still exists at the expected location
-	startPos := block.DefRange.Start
-	if startPos.Line > len(lines) {
-		// Block line is beyond file length, probably already removed
-		return nil
-	}
-
-	// Find block boundaries
-	startLine, endLine, err := bm.findBlockLines(lines, block)
+	// Extract the exact block content to match and remove
+	blockContent, err := bm.ExtractBlockText(block)
 	if err != nil {
-		// Block boundaries not found, might already be removed or modified
-		return nil // Don't error out, just skip removal
+		return fmt.Errorf("failed to extract block content for removal: %w", err)
 	}
 
-	// Verify we actually found a meaningful block to remove
-	if startLine >= endLine || startLine >= len(lines) || endLine >= len(lines) {
-		return nil // Invalid range, skip removal
+	originalContent := string(content)
+	
+	// Try to remove the exact block content
+	newContent := bm.removeBlockByContent(originalContent, blockContent, block.Type)
+	
+	// If nothing was removed, try alternative methods
+	if newContent == originalContent {
+		// Fallback to line-based removal
+		lines := strings.Split(originalContent, "\n")
+		startLine, endLine, err := bm.findBlockLines(lines, block)
+		if err != nil {
+			// Block boundaries not found, might already be removed or modified
+			return nil // Don't error out, just skip removal
+		}
+
+		// Verify we actually found a meaningful block to remove
+		if startLine >= 0 && endLine >= startLine && startLine < len(lines) && endLine < len(lines) {
+			// Include surrounding empty lines for cleaner removal
+			deleteStart, deleteEnd := bm.expandDeletionRange(lines, startLine, endLine)
+
+			// Construct new content without the block
+			newLines := make([]string, 0, len(lines)-(deleteEnd-deleteStart))
+			newLines = append(newLines, lines[:deleteStart]...)
+			newLines = append(newLines, lines[deleteEnd:]...)
+			newContent = strings.Join(newLines, "\n")
+		}
 	}
 
-	// Include surrounding empty lines for cleaner removal
-	deleteStart, deleteEnd := bm.expandDeletionRange(lines, startLine, endLine)
-
-	// Construct new content without the block
-	newLines := make([]string, 0, len(lines)-(deleteEnd-deleteStart))
-	newLines = append(newLines, lines[:deleteStart]...)
-	newLines = append(newLines, lines[deleteEnd:]...)
-
-	// Write back to file
-	newContent := strings.Join(newLines, "\n")
-	if err := os.WriteFile(sourceFile, []byte(newContent), 0644); err != nil {
-		return fmt.Errorf("failed to write modified source file: %w", err)
+	// Write back to file only if content changed
+	if newContent != originalContent {
+		if err := os.WriteFile(sourceFile, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("failed to write modified source file: %w", err)
+		}
 	}
 
 	return nil
@@ -200,6 +206,15 @@ func (bm *BlockManager) CreateFixFunction(block *hclext.Block, targetFileName st
 		blockContent, err := bm.ExtractBlockText(block)
 		if err != nil {
 			return fmt.Errorf("failed to extract block content: %w", err)
+		}
+
+		// Check if this is an empty block that should be skipped
+		if bm.isEmptyBlock(blockContent, block.Type) {
+			// Just remove the empty block, don't move it
+			if err := bm.RemoveBlockFromFile(block); err != nil {
+				return fmt.Errorf("failed to remove empty block from source file: %w", err)
+			}
+			return nil
 		}
 
 		// Determine target file path
@@ -235,6 +250,107 @@ func (bm *BlockManager) isRealFileSystem(filename string) bool {
 		return false
 	}
 	return true
+}
+
+// removeBlockByContent removes a block from content by matching the exact block text
+func (bm *BlockManager) removeBlockByContent(content, blockContent, blockType string) string {
+	// Normalize whitespace for better matching
+	normalizedContent := strings.TrimSpace(content)
+	normalizedBlock := strings.TrimSpace(blockContent)
+	
+	if normalizedBlock == "" {
+		return content
+	}
+	
+	// Try exact match first
+	if strings.Contains(normalizedContent, normalizedBlock) {
+		// Find the position and remove with surrounding whitespace
+		beforeBlock := ""
+		afterBlock := ""
+		
+		blockIndex := strings.Index(normalizedContent, normalizedBlock)
+		if blockIndex >= 0 {
+			beforeBlock = normalizedContent[:blockIndex]
+			afterBlock = normalizedContent[blockIndex+len(normalizedBlock):]
+			
+			// Clean up extra newlines
+			beforeBlock = strings.TrimRight(beforeBlock, "\n")
+			afterBlock = strings.TrimLeft(afterBlock, "\n")
+			
+			if beforeBlock != "" && afterBlock != "" {
+				return beforeBlock + "\n\n" + afterBlock
+			} else if beforeBlock != "" {
+				return beforeBlock + "\n"
+			} else if afterBlock != "" {
+				return afterBlock
+			} else {
+				return ""
+			}
+		}
+	}
+	
+	// Try line-by-line matching for more flexible removal
+	contentLines := strings.Split(content, "\n")
+	blockLines := strings.Split(blockContent, "\n")
+	
+	if len(blockLines) == 0 {
+		return content
+	}
+	
+	// Find the starting position of the block
+	for i := 0; i <= len(contentLines)-len(blockLines); i++ {
+		match := true
+		for j, blockLine := range blockLines {
+			if i+j >= len(contentLines) || strings.TrimSpace(contentLines[i+j]) != strings.TrimSpace(blockLine) {
+				match = false
+				break
+			}
+		}
+		
+		if match {
+			// Found the block, remove it
+			newLines := make([]string, 0, len(contentLines)-len(blockLines))
+			newLines = append(newLines, contentLines[:i]...)
+			newLines = append(newLines, contentLines[i+len(blockLines):]...)
+			
+			// Clean up extra empty lines
+			result := strings.Join(newLines, "\n")
+			result = strings.ReplaceAll(result, "\n\n\n", "\n\n")
+			return result
+		}
+	}
+	
+	return content
+}
+
+// isEmptyBlock checks if a block has no meaningful content
+func (bm *BlockManager) isEmptyBlock(blockContent, blockType string) bool {
+	trimmedContent := strings.TrimSpace(blockContent)
+	if trimmedContent == "" {
+		return true
+	}
+
+	lines := strings.Split(trimmedContent, "\n")
+	hasRealContent := false
+	
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		// Skip empty lines, braces, and block declaration lines
+		if trimmedLine == "" || trimmedLine == "{" || trimmedLine == "}" {
+			continue
+		}
+		
+		// Skip block declaration lines
+		if strings.HasPrefix(trimmedLine, blockType) {
+			continue
+		}
+		
+		// If we find any other content, it's not empty
+		hasRealContent = true
+		break
+	}
+	
+	return !hasRealContent
 }
 
 // Helper methods
@@ -306,6 +422,36 @@ func (bm *BlockManager) findBlockLines(lines []string, block *hclext.Block) (int
 	startPos := block.DefRange.Start
 	startLine := startPos.Line - 1 // 0-based indexing
 
+	if startLine < 0 || startLine >= len(lines) {
+		return 0, 0, fmt.Errorf("start line %d is out of bounds", startLine+1)
+	}
+
+	// Verify the start line contains the expected block type
+	expectedBlockStart := false
+	startLineContent := strings.TrimSpace(lines[startLine])
+	if strings.HasPrefix(startLineContent, block.Type) {
+		expectedBlockStart = true
+	}
+
+	if !expectedBlockStart {
+		// Try to find the block by searching around the expected line
+		found := false
+		for offset := -2; offset <= 2; offset++ {
+			checkLine := startLine + offset
+			if checkLine >= 0 && checkLine < len(lines) {
+				lineContent := strings.TrimSpace(lines[checkLine])
+				if strings.HasPrefix(lineContent, block.Type) {
+					startLine = checkLine
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return 0, 0, fmt.Errorf("could not find block starting with '%s' near line %d", block.Type, startLine+1)
+		}
+	}
+
 	// Find the end line by counting braces with proper string handling
 	braceCount := 0
 	blockEndLine := startLine
@@ -373,13 +519,13 @@ func (bm *BlockManager) expandDeletionRange(lines []string, startLine, endLine i
 	deleteStart := startLine
 	deleteEnd := endLine + 1 // Include the closing brace line
 
-	// Include preceding empty lines
-	if deleteStart > 0 && strings.TrimSpace(lines[deleteStart-1]) == "" {
+	// Include all preceding empty lines
+	for deleteStart > 0 && strings.TrimSpace(lines[deleteStart-1]) == "" {
 		deleteStart--
 	}
 
-	// Include following empty lines
-	if deleteEnd < len(lines) && strings.TrimSpace(lines[deleteEnd]) == "" {
+	// Include all following empty lines
+	for deleteEnd < len(lines) && strings.TrimSpace(lines[deleteEnd]) == "" {
 		deleteEnd++
 	}
 
@@ -415,19 +561,32 @@ func (bm *BlockManager) appendToTargetFile(targetFile, content string) error {
 	lines := strings.Split(trimmedContent, "\n")
 	nonEmptyLines := 0
 	hasRealContent := false
+	blockDeclarationLine := ""
+	
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
 		if trimmedLine != "" && trimmedLine != "{" && trimmedLine != "}" {
 			nonEmptyLines++
-			// Look for actual content beyond just the block type declaration
-			if !strings.HasPrefix(trimmedLine, "locals") &&
-				!strings.HasPrefix(trimmedLine, "output") &&
-				!strings.HasPrefix(trimmedLine, "variable") {
+			// Identify the block declaration line
+			if strings.HasPrefix(trimmedLine, "locals") ||
+				strings.HasPrefix(trimmedLine, "output") ||
+				strings.HasPrefix(trimmedLine, "variable") ||
+				strings.HasPrefix(trimmedLine, "resource") {
+				blockDeclarationLine = trimmedLine
+			} else {
+				// This is actual content beyond the block declaration
 				hasRealContent = true
 			}
 		}
 	}
-	if nonEmptyLines <= 1 || !hasRealContent { // Only block declaration line or no real content
+	
+	// If we only have a block declaration line and no real content, skip it
+	if nonEmptyLines <= 1 || !hasRealContent {
+		return nil
+	}
+	
+	// Special case: Check for empty locals block pattern "locals {"
+	if strings.HasPrefix(blockDeclarationLine, "locals") && !hasRealContent {
 		return nil
 	}
 
