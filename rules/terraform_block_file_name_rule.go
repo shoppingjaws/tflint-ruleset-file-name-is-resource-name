@@ -23,6 +23,10 @@ type TerraformBlockFileNameRuleConfig struct {
 	ModuleFile      string `hclext:"module_file,optional"`
 	DataPrefix      string `hclext:"data_prefix,optional"`
 	EphemeralPrefix string `hclext:"ephemeral_prefix,optional"`
+	ImportFile      string `hclext:"import_file,optional"`
+	MovedFile       string `hclext:"moved_file,optional"`
+	RemovedFile     string `hclext:"removed_file,optional"`
+	CheckFile       string `hclext:"check_file,optional"`
 }
 
 func NewTerraformBlockFileNameRule() *TerraformBlockFileNameRule {
@@ -84,6 +88,18 @@ func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
 	}
 	if config.EphemeralPrefix == "" {
 		config.EphemeralPrefix = "ephemeral_"
+	}
+	if config.ImportFile == "" {
+		config.ImportFile = "imports.tf"
+	}
+	if config.MovedFile == "" {
+		config.MovedFile = "moved.tf"
+	}
+	if config.RemovedFile == "" {
+		config.RemovedFile = "removed.tf"
+	}
+	if config.CheckFile == "" {
+		config.CheckFile = "checks.tf"
 	}
 
 	files, err := runner.GetFiles()
@@ -151,6 +167,23 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 			{
 				Type: "locals",
 				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "import",
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "moved",
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type: "removed",
+				Body: &hclext.BodySchema{},
+			},
+			{
+				Type:       "check",
+				LabelNames: []string{"name"},
+				Body:       &hclext.BodySchema{},
 			},
 		},
 	}, &tflint.GetModuleContentOption{ExpandMode: tflint.ExpandModeNone})
@@ -224,6 +257,50 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					if err := runner.EmitIssueWithFix(
 						r,
 						fmt.Sprintf("Ephemeral block '%s' should be declared in %s, not in %s", ephemeralType, expectedFilename, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "import" {
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, config.ImportFile)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Import block should be declared in %s, not in %s", config.ImportFile, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "moved" {
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, config.MovedFile)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Moved block should be declared in %s, not in %s", config.MovedFile, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "removed" {
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, config.RemovedFile)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Removed block should be declared in %s, not in %s", config.RemovedFile, basename),
+						blockRange,
+						fixFunc,
+					); err != nil {
+						return err
+					}
+				} else if block.Type == "check" {
+					blockManager := NewBlockManager(runner)
+					fixFunc := blockManager.CreateFixFunction(block, config.CheckFile)
+					if err := runner.EmitIssueWithFix(
+						r,
+						fmt.Sprintf("Check block should be declared in %s, not in %s", config.CheckFile, basename),
 						blockRange,
 						fixFunc,
 					); err != nil {
@@ -415,6 +492,46 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					return err
 				}
 			}
+		} else if basename == config.ImportFile {
+			if block.Type != "import" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only import blocks should be declared in %s, found %s block", config.ImportFile, block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else if basename == config.MovedFile {
+			if block.Type != "moved" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only moved blocks should be declared in %s, found %s block", config.MovedFile, block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else if basename == config.RemovedFile {
+			if block.Type != "removed" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only removed blocks should be declared in %s, found %s block", config.RemovedFile, block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
+		} else if basename == config.CheckFile {
+			if block.Type != "check" {
+				if err := runner.EmitIssue(
+					r,
+					fmt.Sprintf("Only check blocks should be declared in %s, found %s block", config.CheckFile, block.Type),
+					blockRange,
+				); err != nil {
+					return err
+				}
+			}
 		} else {
 			// Handle non-special files
 			switch block.Type {
@@ -547,6 +664,54 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 				); err != nil {
 					return err
 				}
+			case "import":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, config.ImportFile)
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Import block should be declared in %s, not in %s", config.ImportFile, basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			case "moved":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, config.MovedFile)
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Moved block should be declared in %s, not in %s", config.MovedFile, basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			case "removed":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, config.RemovedFile)
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Removed block should be declared in %s, not in %s", config.RemovedFile, basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
+			case "check":
+				blockManager := NewBlockManager(runner)
+				fixFunc := blockManager.CreateFixFunction(block, config.CheckFile)
+
+				if err := runner.EmitIssueWithFix(
+					r,
+					fmt.Sprintf("Check block should be declared in %s, not in %s", config.CheckFile, basename),
+					blockRange,
+					fixFunc,
+				); err != nil {
+					return err
+				}
 			}
 
 			// Check if this is a resource-specific file that contains non-matching blocks
@@ -657,7 +822,7 @@ func (r *TerraformBlockFileNameRule) isResourceFile(basename string, dataPrefix 
 	filename := strings.TrimSuffix(basename, ".tf")
 
 	// Exclude special files
-	specialFiles := []string{"variables", "outputs", "locals", "main", "providers", "versions", "terraform"}
+	specialFiles := []string{"variables", "outputs", "locals", "main", "providers", "versions", "terraform", "imports", "moved", "removed", "checks"}
 	for _, special := range specialFiles {
 		if filename == special {
 			return false

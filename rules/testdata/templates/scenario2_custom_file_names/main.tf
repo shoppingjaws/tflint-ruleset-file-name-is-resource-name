@@ -66,6 +66,28 @@ resource "aws_instance" "example" {
   tags = local.common_tags
 }
 
+resource "aws_security_group" "example" {
+  name_prefix = "example-"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+}
+
 # Data sources with custom prefix (datasource_)
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -97,24 +119,30 @@ ephemeral "aws_ephemeral_storage" "temp_storage" {
   duration = "2h"
 }
 
-resource "aws_security_group" "example" {
-  name_prefix = "example-"
-  vpc_id      = module.vpc.vpc_id
+# Import blocks (Terraform 1.5+)
+import {
+  to = aws_instance.imported_ec2
+  id = "i-0987654321fedcba0"
+}
 
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+# Moved blocks (Terraform 1.1+)
+moved {
+  from = aws_instance.legacy_instance
+  to   = aws_instance.example
+}
+
+# Removed blocks (Terraform 1.7+)
+removed {
+  from = aws_security_group.deprecated_sg
+  lifecycle {
+    destroy = false
   }
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+# Check blocks (Terraform 1.5+)
+check "security_validation" {
+  assert {
+    condition     = length(aws_security_group.example.ingress) > 0
+    error_message = "Security group must have at least one ingress rule"
   }
-
-  tags = local.common_tags
 }

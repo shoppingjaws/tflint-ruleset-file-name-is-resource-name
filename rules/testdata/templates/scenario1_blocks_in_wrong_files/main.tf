@@ -58,6 +58,20 @@ resource "aws_instance" "example" {
   tags          = local.common_tags
 }
 
+resource "aws_security_group" "web" {
+  name_prefix = "web-"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+}
+
 # Data sources
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -110,16 +124,59 @@ ephemeral "aws_ephemeral_network" "temp_network" {
   duration   = "30m"
 }
 
-resource "aws_security_group" "web" {
-  name_prefix = "web-"
-  vpc_id      = module.vpc.vpc_id
+# Import blocks (Terraform 1.5+)
+import {
+  to = aws_instance.existing
+  id = "i-1234567890abcdef0"
+}
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+import {
+  to = aws_security_group.imported
+  id = "sg-0123456789abcdef0"
+}
+
+# Moved blocks (Terraform 1.1+)
+moved {
+  from = aws_instance.old_instance
+  to   = aws_instance.example
+}
+
+moved {
+  from = module.old_vpc
+  to   = module.vpc
+}
+
+# Removed blocks (Terraform 1.7+)
+removed {
+  from = aws_instance.deprecated
+  lifecycle {
+    destroy = false
   }
+}
 
-  tags = local.common_tags
+removed {
+  from = aws_security_group.legacy
+  lifecycle {
+    destroy = true
+  }
+}
+
+# Check blocks (Terraform 1.5+)
+check "instance_health" {
+  assert {
+    condition     = aws_instance.example.instance_state == "running"
+    error_message = "EC2 instance must be in running state"
+  }
+}
+
+check "vpc_configuration" {
+  assert {
+    condition     = length(module.vpc.public_subnets) >= 2
+    error_message = "VPC must have at least 2 public subnets"
+  }
+  
+  assert {
+    condition     = module.vpc.enable_nat_gateway == true
+    error_message = "NAT gateway must be enabled for the VPC"
+  }
 }
