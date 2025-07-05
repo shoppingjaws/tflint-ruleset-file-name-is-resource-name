@@ -1,19 +1,13 @@
-# Check blocks (Terraform 1.5+)
-check "instance_health" {
+check "instance_validation" {
   assert {
-    condition     = aws_instance.example.instance_state == "running"
-    error_message = "EC2 instance must be in running state"
+    condition     = aws_instance.example.instance_type == var.instance_type
+    error_message = "Instance type must match variable"
   }
 }
 
-check "vpc_configuration" {
+check "security_validation" {
   assert {
-    condition     = length(module.vpc.public_subnets) >= 2
-    error_message = "VPC must have at least 2 public subnets"
-  }
-  
-  assert {
-    condition     = module.vpc.enable_nat_gateway == true
-    error_message = "NAT gateway must be enabled for the VPC"
+    condition     = length(aws_security_group.example.ingress) > 0
+    error_message = "Security group must have at least one ingress rule"  
   }
 }
