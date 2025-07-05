@@ -50,13 +50,6 @@ func (r *TerraformBlockFileNameRule) Link() string {
 }
 
 func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
-	path, err := runner.GetModulePath()
-	if err != nil {
-		return err
-	}
-	if !path.IsRoot() {
-		return nil
-	}
 
 	// Decode custom configuration
 	config := &TerraformBlockFileNameRuleConfig{}

@@ -293,11 +293,8 @@ func (bm *BlockManager) CreateFixFunction(block *hclext.Block, targetFileName st
 
 		// Check if this is an empty block that should be skipped
 		if bm.isEmptyBlock(blockContent, block.Type) {
-			// Just remove the empty block, don't move it
-			if err := bm.RemoveBlockFromFile(block); err != nil {
-				return fmt.Errorf("failed to remove empty block from source file: %w", err)
-			}
-			return nil
+			// Just remove the empty block using the fixer interface
+			return f.RemoveExtBlock(block)
 		}
 
 		// Determine target file path
@@ -316,12 +313,8 @@ func (bm *BlockManager) CreateFixFunction(block *hclext.Block, targetFileName st
 			return fmt.Errorf("failed to append to target file: %w", err)
 		}
 
-		// Remove block from source file
-		if err := bm.RemoveBlockFromFile(block); err != nil {
-			return fmt.Errorf("failed to remove block from source file: %w", err)
-		}
-
-		return nil
+		// Remove block from source file using the fixer interface
+		return f.RemoveExtBlock(block)
 	}
 }
 

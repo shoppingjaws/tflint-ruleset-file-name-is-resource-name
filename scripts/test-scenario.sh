@@ -73,6 +73,18 @@ echo ""
 echo "=== Running tflint --fix ==="
 tflint --fix || true
 
+# Check for module directories and run tflint --fix on them too
+if [ -d "modules" ]; then
+    echo ""
+    echo "=== Running tflint --fix on modules ==="
+    for module_dir in modules/*/; do
+        if [ -d "$module_dir" ] && [ -f "$module_dir.tflint.hcl" ]; then
+            echo "Processing module: $module_dir"
+            (cd "$module_dir" && tflint --init > /dev/null 2>&1 && tflint --fix) || true
+        fi
+    done
+fi
+
 echo ""
 echo "=== Final state ==="
 echo "Files after fix:"
