@@ -81,30 +81,23 @@ func (bm *BlockManager) ExtractBlockText(block *hclext.Block) (string, error) {
 		return "", fmt.Errorf("start line %d is beyond file length %d", startLine+1, len(lines))
 	}
 
-	// For import, moved, removed, and check blocks, include preceding comment lines
-	if block.Type == "import" || block.Type == "moved" || block.Type == "removed" || block.Type == "check" {
-		// Look backwards for comment lines
-		originalStartLine := startLine
-		for i := startLine - 1; i >= 0; i-- {
-			trimmedLine := strings.TrimSpace(lines[i])
-			if trimmedLine == "" {
-				// Empty line - keep looking if we haven't found the comment yet
-				if i > 0 && i == originalStartLine - 1 {
-					continue
-				}
-				// Found content before, now hit empty line - stop
-				if startLine < originalStartLine {
-					break
-				}
-			} else if strings.HasPrefix(trimmedLine, "#") {
-				// Comment line - include it
-				startLine = i
-			} else {
-				// Non-comment, non-empty line - stop
-				break
-			}
+	// Include preceding comment lines for all block types
+	// Look backwards for comment lines that are directly above the block
+	tempStartLine := startLine
+	for i := startLine - 1; i >= 0; i-- {
+		trimmedLine := strings.TrimSpace(lines[i])
+		if trimmedLine == "" {
+			// Empty line - stop here, don't include comments before empty lines
+			break
+		} else if strings.HasPrefix(trimmedLine, "#") || strings.HasPrefix(trimmedLine, "//") {
+			// Comment line - include it
+			tempStartLine = i
+		} else {
+			// Non-comment, non-empty line - stop
+			break
 		}
 	}
+	startLine = tempStartLine
 
 
 	// Find the end of the block by counting braces with proper string handling
@@ -478,30 +471,23 @@ func (bm *BlockManager) findBlockLines(lines []string, block *hclext.Block) (int
 		}
 	}
 
-	// For import, moved, removed, and check blocks, include preceding comment lines
-	if block.Type == "import" || block.Type == "moved" || block.Type == "removed" || block.Type == "check" {
-		// Look backwards for comment lines
-		originalStartLine := startLine
-		for i := startLine - 1; i >= 0; i-- {
-			trimmedLine := strings.TrimSpace(lines[i])
-			if trimmedLine == "" {
-				// Empty line - keep looking if we're right before the block
-				if i == originalStartLine - 1 {
-					continue
-				}
-				// Found content before, now hit empty line - stop
-				if startLine < originalStartLine {
-					break
-				}
-			} else if strings.HasPrefix(trimmedLine, "#") {
-				// Comment line - include it
-				startLine = i
-			} else {
-				// Non-comment, non-empty line - stop
-				break
-			}
+	// Include preceding comment lines for all block types
+	// Look backwards for comment lines that are directly above the block
+	tempStartLine := startLine
+	for i := startLine - 1; i >= 0; i-- {
+		trimmedLine := strings.TrimSpace(lines[i])
+		if trimmedLine == "" {
+			// Empty line - stop here, don't include comments before empty lines
+			break
+		} else if strings.HasPrefix(trimmedLine, "#") || strings.HasPrefix(trimmedLine, "//") {
+			// Comment line - include it
+			tempStartLine = i
+		} else {
+			// Non-comment, non-empty line - stop
+			break
 		}
 	}
+	startLine = tempStartLine
 
 
 	// Find the end line by counting braces with proper string handling

@@ -1,0 +1,3 @@
+variable "existing" {
+  type = string
+}
