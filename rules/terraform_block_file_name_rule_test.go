@@ -1,0 +1,449 @@
+package rules
+
+import (
+	"os"
+	"testing"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/terraform-linters/tflint-plugin-sdk/helper"
+)
+
+func Test_TerraformBlockFileNameRule(t *testing.T) {
+	// Clean up any .tf files created in the rules directory during testing
+	defer func() {
+		files := []string{"variables.tf", "outputs.tf", "locals.tf", "aws_instance.tf", "aws_s3_bucket.tf", "aws_iam_role.tf"}
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}()
+	tests := []struct {
+		name     string
+		files    map[string]string
+		expected helper.Issues
+	}{
+		{
+			name: "variable in variables.tf - valid",
+			files: map[string]string{
+				"variables.tf": `
+variable "example" {
+  description = "An example variable"
+  type        = string
+  default     = "hello"
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "variable in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+variable "example" {
+  description = "An example variable"
+  type        = string
+  default     = "hello"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 19},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple variables in wrong file - invalid",
+			files: map[string]string{
+				"config.tf": `
+variable "first" {
+  type = string
+}
+
+variable "second" {
+  type = number
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in config.tf",
+					Range: hcl.Range{
+						Filename: "config.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 17},
+					},
+				},
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in config.tf",
+					Range: hcl.Range{
+						Filename: "config.tf",
+						Start:    hcl.Pos{Line: 6, Column: 1},
+						End:      hcl.Pos{Line: 6, Column: 18},
+					},
+				},
+			},
+		},
+		{
+			name: "resource in main.tf - invalid (should be in resource-specific file)",
+			files: map[string]string{
+				"main.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed content with variables in correct file but resource in wrong file - invalid",
+			files: map[string]string{
+				"variables.tf": `
+variable "instance_type" {
+  type    = string
+  default = "t2.micro"
+}`,
+				"main.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = var.instance_type
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "resource block in variables.tf - invalid",
+			files: map[string]string{
+				"variables.tf": `
+variable "instance_type" {
+  type = string
+}
+
+resource "aws_instance" "example" {
+  ami = "ami-12345678"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in variables.tf",
+					Range: hcl.Range{
+						Filename: "variables.tf",
+						Start:    hcl.Pos{Line: 6, Column: 1},
+						End:      hcl.Pos{Line: 6, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in variables.tf - invalid",
+			files: map[string]string{
+				"variables.tf": `
+output "instance_id" {
+  value = "test"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Output block should be declared in outputs.tf, not in variables.tf",
+					Range: hcl.Range{
+						Filename: "variables.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 21},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.example.id
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Output block should be declared in outputs.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 21},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in outputs.tf - valid",
+			files: map[string]string{
+				"outputs.tf": `
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.example.id
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "locals block in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "example"
+  }
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Locals block should be declared in locals.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 7},
+					},
+				},
+			},
+		},
+		{
+			name: "locals block in locals.tf - valid",
+			files: map[string]string{
+				"locals.tf": `
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "example"
+  }
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "variable block in outputs.tf - invalid",
+			files: map[string]string{
+				"outputs.tf": `
+variable "should_not_be_here" {
+  type = string
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in outputs.tf",
+					Range: hcl.Range{
+						Filename: "outputs.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 30},
+					},
+				},
+			},
+		},
+		{
+			name: "resource block in outputs.tf - invalid",
+			files: map[string]string{
+				"outputs.tf": `
+resource "aws_instance" "should_not_be_here" {
+  ami = "ami-12345678"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in outputs.tf",
+					Range: hcl.Range{
+						Filename: "outputs.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 45},
+					},
+				},
+			},
+		},
+		{
+			name: "output block in locals.tf - invalid",
+			files: map[string]string{
+				"locals.tf": `
+output "should_not_be_here" {
+  value = "test"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Output block should be declared in outputs.tf, not in locals.tf",
+					Range: hcl.Range{
+						Filename: "locals.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 28},
+					},
+				},
+			},
+		},
+		{
+			name: "aws_instance resource in aws_instance.tf - valid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "aws_instance resource in main.tf - invalid",
+			files: map[string]string{
+				"main.tf": `
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_instance' should be declared in aws_instance.tf, not in main.tf",
+					Range: hcl.Range{
+						Filename: "main.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "aws_iam_role resource in wrong file - invalid",
+			files: map[string]string{
+				"security.tf": `
+resource "aws_iam_role" "example" {
+  name = "example"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_iam_role' should be declared in aws_iam_role.tf, not in security.tf",
+					Range: hcl.Range{
+						Filename: "security.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 34},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple aws_instance resources in aws_instance.tf - valid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_instance" "web" {
+  ami = "ami-12345678"
+}
+
+resource "aws_instance" "db" {
+  ami = "ami-87654321"
+}`,
+			},
+			expected: helper.Issues{},
+		},
+		{
+			name: "wrong resource type in aws_instance.tf - invalid",
+			files: map[string]string{
+				"aws_instance.tf": `
+resource "aws_s3_bucket" "example" {
+  bucket = "my-bucket"
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Resource block 'aws_s3_bucket' should be declared in aws_s3_bucket.tf, not in aws_instance.tf",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 35},
+					},
+				},
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Only 'aws_instance' resource blocks should be declared in aws_instance.tf, found 'aws_s3_bucket' resource block",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 35},
+					},
+				},
+			},
+		},
+		{
+			name: "variable block in aws_instance.tf - invalid",
+			files: map[string]string{
+				"aws_instance.tf": `
+variable "instance_type" {
+  type = string
+}`,
+			},
+			expected: helper.Issues{
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Variable block should be declared in variables.tf, not in aws_instance.tf",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 25},
+					},
+				},
+				{
+					Rule:    NewTerraformBlockFileNameRule(),
+					Message: "Only 'aws_instance' resource blocks should be declared in aws_instance.tf, found variable block",
+					Range: hcl.Range{
+						Filename: "aws_instance.tf",
+						Start:    hcl.Pos{Line: 2, Column: 1},
+						End:      hcl.Pos{Line: 2, Column: 25},
+					},
+				},
+			},
+		},
+	}
+
+	rule := NewTerraformBlockFileNameRule()
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runner := helper.TestRunner(t, test.files)
+
+			if err := rule.Check(runner); err != nil {
+				t.Fatalf("Unexpected error occurred: %s", err)
+			}
+
+			helper.AssertIssues(t, test.expected, runner.Issues)
+		})
+	}
+}

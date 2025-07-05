@@ -1,0 +1,7 @@
+# don't track built binary
+/tflint-ruleset-template
+
+# test generated files
+rules/testdata/working/
+rules/testdata/demo/
+tflint-ruleset-file-name-is-resource-name
