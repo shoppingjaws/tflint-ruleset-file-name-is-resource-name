@@ -21,8 +21,3 @@ resource "aws_instance" "example" {
   instance_type = var.instance_type
   tags          = local.common_tags
 }
-
-moved {
-  from = aws_instance.example
-  to   = aws_instance.example
-}
