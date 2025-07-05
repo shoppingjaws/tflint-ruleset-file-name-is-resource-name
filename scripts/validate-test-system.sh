@@ -13,8 +13,13 @@ echo ""
 cd "$PROJECT_ROOT"
 
 # Run the actual test scenarios
+echo "====================================="
+echo "Running test-scenarios..."
+echo "====================================="
 if ! make test-scenarios; then
+    echo ""
     echo "❌ test-scenarios failed!"
+    echo "Failed at scenario test execution"
     exit 1
 fi
 

@@ -82,27 +82,60 @@ test-all-scenarios: reset-scenarios
 .PHONY: test-scenarios
 test-scenarios: reset-scenarios
 	@echo "Running scenario tests and comparing with expected results..."
-	@for scenario in rules/testdata/templates/*; do \
+	@echo ""
+	@failed_scenarios=""; \
+	total_scenarios=0; \
+	passed_scenarios=0; \
+	for scenario in rules/testdata/templates/*; do \
 		if [ -d "$$scenario" ]; then \
 			scenario_name=$$(basename "$$scenario"); \
+			total_scenarios=$$((total_scenarios + 1)); \
+			echo "========================================"; \
 			echo "Testing scenario: $$scenario_name"; \
-			SKIP_RESET=1 ./scripts/test-scenario.sh "$$scenario_name"; \
+			echo "========================================"; \
+			SKIP_RESET=1 ./scripts/test-scenario.sh "$$scenario_name" > /dev/null 2>&1; \
 			if [ -d "rules/testdata/answer/$$scenario_name" ]; then \
 				echo "Comparing results for $$scenario_name..."; \
 				if diff -r "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" > /dev/null 2>&1; then \
-					echo "✓ $$scenario_name passed"; \
+					echo "✅ $$scenario_name: PASSED"; \
+					passed_scenarios=$$((passed_scenarios + 1)); \
 				else \
-					echo "✗ $$scenario_name failed - differences found:"; \
-					diff -r "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name"; \
-					exit 1; \
+					echo "❌ $$scenario_name: FAILED - differences found"; \
+					echo ""; \
+					echo "📁 Files only in working directory:"; \
+					diff -rq "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" 2>/dev/null | grep "Only in rules/testdata/working" | sed 's/Only in /  - /' || echo "  (none)"; \
+					echo ""; \
+					echo "📁 Files only in answer directory (missing from working):"; \
+					diff -rq "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" 2>/dev/null | grep "Only in rules/testdata/answer" | sed 's/Only in /  - /' || echo "  (none)"; \
+					echo ""; \
+					echo "📝 File content differences:"; \
+					for file in $$(diff -rq "rules/testdata/working/$$scenario_name" "rules/testdata/answer/$$scenario_name" 2>/dev/null | grep "differ$$" | awk '{print $$2}'); do \
+						relative_file=$${file#rules/testdata/working/$$scenario_name/}; \
+						echo "  File: $$relative_file"; \
+						diff -u "rules/testdata/working/$$scenario_name/$$relative_file" "rules/testdata/answer/$$scenario_name/$$relative_file" | head -20 | sed 's/^/    /'; \
+						echo ""; \
+					done; \
+					failed_scenarios="$$failed_scenarios $$scenario_name"; \
 				fi; \
 			else \
-				echo "⚠ No answer directory found for $$scenario_name"; \
+				echo "⚠️  $$scenario_name: SKIPPED - no answer directory found"; \
 			fi; \
+			echo ""; \
 		fi; \
-	done
-	@echo ""
-	@echo "All scenario tests passed!"
+	done; \
+	echo "========================================"; \
+	echo "Test Summary: $$passed_scenarios/$$total_scenarios passed"; \
+	echo "========================================"; \
+	if [ -n "$$failed_scenarios" ]; then \
+		echo ""; \
+		echo "❌ FAILED scenarios:$$failed_scenarios"; \
+		echo ""; \
+		echo "Run 'make test-scenario SCENARIO=<name>' to debug individual scenarios"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "✅ All scenario tests passed!"; \
+	fi
 
 .PHONY: validate-test-system
 validate-test-system:
