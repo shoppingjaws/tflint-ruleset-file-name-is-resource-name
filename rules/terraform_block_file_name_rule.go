@@ -116,6 +116,19 @@ func (r *TerraformBlockFileNameRule) Check(runner tflint.Runner) error {
 	return nil
 }
 
+// handleStandardBlockFix handles fix operations for standard block types that have a single target file
+func (r *TerraformBlockFileNameRule) handleStandardBlockFix(runner tflint.Runner, block *hclext.Block, blockRange hcl.Range, targetFile string, expectedBlockType string, basename string) error {
+	blockManager := NewBlockManager(runner)
+	fixFunc := blockManager.CreateFixFunction(block, targetFile)
+	blockTypeCapitalized := strings.Title(expectedBlockType)
+	return runner.EmitIssueWithFix(
+		r,
+		fmt.Sprintf("%s block should be declared in %s, not in %s", blockTypeCapitalized, targetFile, basename),
+		blockRange,
+		fixFunc,
+	)
+}
+
 func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename string, file *hcl.File, config *TerraformBlockFileNameRuleConfig) error {
 	basename := filepath.Base(filename)
 
@@ -202,25 +215,11 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 		if basename == config.VariableFile {
 			if block.Type != "variable" {
 				if block.Type == "output" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.OutputFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Output block should be declared in %s, not in %s", config.OutputFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.OutputFile, "output", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "locals" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.LocalsFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Locals block should be declared in %s, not in %s", config.LocalsFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.LocalsFile, "locals", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "resource" && len(block.Labels) >= 1 {
@@ -263,47 +262,19 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 						return err
 					}
 				} else if block.Type == "import" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.ImportFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Import block should be declared in %s, not in %s", config.ImportFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.ImportFile, "import", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "moved" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.MovedFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Moved block should be declared in %s, not in %s", config.MovedFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.MovedFile, "moved", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "removed" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.RemovedFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Removed block should be declared in %s, not in %s", config.RemovedFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.RemovedFile, "removed", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "check" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.CheckFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Check block should be declared in %s, not in %s", config.CheckFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.CheckFile, "check", basename); err != nil {
 						return err
 					}
 				} else {
@@ -319,25 +290,11 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 		} else if basename == config.OutputFile {
 			if block.Type != "output" {
 				if block.Type == "variable" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.VariableFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Variable block should be declared in %s, not in %s", config.VariableFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.VariableFile, "variable", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "locals" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.LocalsFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Locals block should be declared in %s, not in %s", config.LocalsFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.LocalsFile, "locals", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "resource" && len(block.Labels) >= 1 {
@@ -392,25 +349,11 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 		} else if basename == config.LocalsFile {
 			if block.Type != "locals" {
 				if block.Type == "variable" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.VariableFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Variable block should be declared in %s, not in %s", config.VariableFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.VariableFile, "variable", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "output" {
-					blockManager := NewBlockManager(runner)
-					fixFunc := blockManager.CreateFixFunction(block, config.OutputFile)
-					if err := runner.EmitIssueWithFix(
-						r,
-						fmt.Sprintf("Output block should be declared in %s, not in %s", config.OutputFile, basename),
-						blockRange,
-						fixFunc,
-					); err != nil {
+					if err := r.handleStandardBlockFix(runner, block, blockRange, config.OutputFile, "output", basename); err != nil {
 						return err
 					}
 				} else if block.Type == "resource" && len(block.Labels) >= 1 {
@@ -536,39 +479,15 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 			// Handle non-special files
 			switch block.Type {
 			case "variable":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.VariableFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Variable block should be declared in %s, not in %s", config.VariableFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.VariableFile, "variable", basename); err != nil {
 					return err
 				}
 			case "output":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.OutputFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Output block should be declared in %s, not in %s", config.OutputFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.OutputFile, "output", basename); err != nil {
 					return err
 				}
 			case "locals":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.LocalsFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Locals block should be declared in %s, not in %s", config.LocalsFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.LocalsFile, "locals", basename); err != nil {
 					return err
 				}
 			case "resource":
@@ -629,87 +548,31 @@ func (r *TerraformBlockFileNameRule) checkFile(runner tflint.Runner, filename st
 					}
 				}
 			case "terraform":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.TerraformFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Terraform block should be declared in %s, not in %s", config.TerraformFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.TerraformFile, "terraform", basename); err != nil {
 					return err
 				}
 			case "provider":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.ProviderFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Provider block should be declared in %s, not in %s", config.ProviderFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.ProviderFile, "provider", basename); err != nil {
 					return err
 				}
 			case "module":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.ModuleFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Module block should be declared in %s, not in %s", config.ModuleFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.ModuleFile, "module", basename); err != nil {
 					return err
 				}
 			case "import":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.ImportFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Import block should be declared in %s, not in %s", config.ImportFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.ImportFile, "import", basename); err != nil {
 					return err
 				}
 			case "moved":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.MovedFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Moved block should be declared in %s, not in %s", config.MovedFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.MovedFile, "moved", basename); err != nil {
 					return err
 				}
 			case "removed":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.RemovedFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Removed block should be declared in %s, not in %s", config.RemovedFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.RemovedFile, "removed", basename); err != nil {
 					return err
 				}
 			case "check":
-				blockManager := NewBlockManager(runner)
-				fixFunc := blockManager.CreateFixFunction(block, config.CheckFile)
-
-				if err := runner.EmitIssueWithFix(
-					r,
-					fmt.Sprintf("Check block should be declared in %s, not in %s", config.CheckFile, basename),
-					blockRange,
-					fixFunc,
-				); err != nil {
+				if err := r.handleStandardBlockFix(runner, block, blockRange, config.CheckFile, "check", basename); err != nil {
 					return err
 				}
 			}
