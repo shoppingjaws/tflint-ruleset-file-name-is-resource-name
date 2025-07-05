@@ -12,13 +12,6 @@ This is a TFLint ruleset for enforcing Terraform file naming conventions. The ru
 - **Outputs**: Must be in `output.tf`
 - **Data sources**: Must follow pattern `data_*.tf` (e.g., `data_aws_instance.tf`)
 - **Resources**: File name should match resource type (e.g., `aws_instance.tf` for `aws_instance` resources)
-- **Locals**: Must be in `locals.tf`
-- **Terraform settings**: Must be in `terraform.tf`
-- **Import blocks**: Must be in `imports.tf`
-- **Moved blocks**: Must be in `moved.tf`
-- **Removed blocks**: Must be in `removed.tf`
-- **Check blocks**: Must be in `checks.tf`
-- **Ephemeral resources**: Must follow pattern `ephemeral_*.tf` (e.g., `ephemeral_aws_instance.tf`)
 
 ## Development Commands
 
@@ -38,11 +31,7 @@ go mod tidy       # Clean up dependencies
 
 **Plugin Structure:**
 - `main.go`: Plugin entry point using TFLint Plugin SDK v0.22.0
-- `rules/`: Rule implementations with test coverage
-  - `terraform_block_file_name_rule.go`: Main rule implementation
-  - `block_manager.go`: Handles block collection and file name validation
-  - `test_support.go`: Test helpers and utilities
-  - `integration_test.go`: End-to-end testing with scenarios
+- `rules/`: Individual rule implementations (currently empty after refactor)
 - Rules implement `tflint.Rule` interface and analyze HCL AST
 - Rules are registered in `main.go` RuleSet
 
@@ -55,11 +44,9 @@ go mod tidy       # Clean up dependencies
 ## Current State
 
 - **Branch**: `develop/refactor-ruleset` (will merge to `main`)
-- **Status**: Rules have been implemented in `rules/` directory with comprehensive test coverage
-- **Module**: Updated to `github.com/shoppingjaws/tflint-ruleset-file-name-is-resource-name`
-- **Binary**: Renamed to `tflint-ruleset-file-name-is-resource-name`
-- **Implementation**: Full support for all Terraform block types including ephemeral resources
-- **Testing**: Integration tests with scenario-based testing framework
+- **Status**: Rules directory is empty after recent refactor - needs new rule implementations
+- **Module**: Still references template path, needs updating to actual project path
+- **Binary**: Currently named `tflint-ruleset-template`, needs renaming
 
 ## CI/CD
 
@@ -79,5 +66,3 @@ After implementing rules, test locally:
 ## Memories
 
 - TFLint plugin SDKの制限を回避するために、空ブロックの削除を追加
-- Terraform 1.10で導入されたephemeralリソースのサポートを実装
-- 統合テスト用のシナリオベースのテストフレームワークを構築
